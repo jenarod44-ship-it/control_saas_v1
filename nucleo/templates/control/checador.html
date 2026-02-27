@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reloj Checador</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            margin-top: 80px;
+        }
+
+        .reloj {
+            font-size: 60px;
+            font-weight: bold;
+            margin-bottom: 40px;
+        }
+
+        select {
+            font-size: 20px;
+            padding: 10px;
+            width: 300px;
+            border-radius: 8px;
+        }
+
+        button {
+            margin-top: 30px;
+            font-size: 22px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            background: #22c55e;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .mensaje {
+            margin-top: 30px;
+            font-size: 22px;
+            color: #38bdf8;
+        }
+
+        .volver {
+            margin-top: 50px;
+            display: block;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="reloj" id="reloj"></div>
+
+    <h2>Registro de Asistencia</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <input 
+            name="numero"
+            placeholder="Número de empleado"
+            autofocus
+            required
+            style="font-size:22px;padding:10px;text-align:center;"
+        <input 
+            name="numero"
+            placeholder="Número de empleado"
+            style="font-size:22px;padding:10px;text-align:center; position:relative; z-index:9999;"
+
+        >
+
+        <input placeholder="prueba">
+      
+
+        <br>
+
+        <button type="submit">MARCAR</button>
+    </form>
+
+    {% if mensaje %}
+        <div class="mensaje">
+            {{ mensaje }}
+        </div>
+    {% endif %}
+    {% if ultimas %}
+<div style="margin-top:40px; opacity:0.8;">
+    <h3>Últimos registros</h3>
+
+    {% for a in ultimas %}
+        <div>
+            {{ a.empleado.nombre }}
+            —
+            {{ a.hora_entrada|default:"-" }}
+            /
+            {{ a.hora_salida|default:"-" }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+    <a class="volver" href="{% url 'dashboard' %}">
+        ← Volver al Panel
+    </a>
+
+</div>
+
+<script>
+function actualizarReloj() {
+    const ahora = new Date();
+    const hora = ahora.toLocaleTimeString();
+    document.getElementById("reloj").innerHTML = hora;
+}
+
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+</script>
+
+</body>
+</html>         
+ip = request.META.get('REMOTE_ADDR')
+asistencia, created = Asistencia.objects.get_or_create(
+    empresa=empresa,
+    empleado=empleado,
+    fecha=hoy
+)
+
+
+

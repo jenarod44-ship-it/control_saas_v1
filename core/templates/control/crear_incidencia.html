@@ -1,0 +1,32 @@
+@login_required
+def crear_incidencia(request):
+
+    empresa = obtener_empresa_usuario(request.user)
+
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True
+    )
+
+    if request.method == "POST":
+        empleado_id = request.POST.get("empleado")
+        tipo = request.POST.get("tipo")
+        fecha_inicio = request.POST.get("fecha_inicio")
+        fecha_fin = request.POST.get("fecha_fin")
+
+        incidencia = Incidencia.objects.create(
+            empleado_id=empleado_id,
+            tipo=tipo,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin
+        )
+
+        generar_incidencias_por_rango(incidencia)
+
+        return redirect("dashboard")
+
+    return render(
+        request,
+        "nucleo/incidencias.html",   # ⭐ PLURAL
+        {"empleados": empleados}
+    )

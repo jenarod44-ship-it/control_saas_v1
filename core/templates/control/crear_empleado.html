@@ -1,0 +1,19 @@
+<h2>Nuevo empleado</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    <input name="nombre" placeholder="Nombre" required><br><br>
+    <input name="numero" placeholder="Número empleado" required><br><br>
+
+    <button type="submit">Guardar</button>
+</form>
+
+<script>
+document.querySelector("form").addEventListener("keypress", function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+    }
+});
+</script>
+

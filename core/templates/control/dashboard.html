@@ -1,0 +1,69 @@
+{% extends "control/base.html" %}
+
+{% block content %}
+
+<h2>Panel de Control</h2>
+
+<a href="{% url 'crear_empleado' %}" class="btn btn-primary mb-3">
+    Nuevo empleado
+</a>
+
+<a href="{% url 'nucleo:incidencias' %}" class="btn btn-warning mb-3 ms-2">
+    Incidencias
+</a>
+
+<a href="{% url 'nucleo:crear_incidencia' %}" class="btn btn-secondary mb-3 ms-2">
+    Registrar incidencia
+</a>
+</a>
+<p>Empresa actual: {{ empresa }}</p>
+<p>Total empleados activos: {{ total_empleados }}</p>
+<p id="reloj" class="text-muted"></p>
+
+<div class="row mt-4">
+
+    <div class="col-md-4">
+        <div class="card shadow p-3">
+            <h5>Total empleados activos</h5>
+            <h2>{{ total_empleados }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow p-3">
+            <h5>Ausencias justificadas</h5>
+            <h2>{{ ausencias_justificadas }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3">
+            <h5>Asistencias hoy</h5>
+            <h2>{{ asistencias_hoy }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow p-3">
+            <h5>Sin entrada</h5>
+            <h2>{{ empleados_sin_entrada }}</h2>
+        </div>
+    </div>
+
+        </div><hr class="mt-4">
+
+        <h4>Lista de empleados</h4>
+
+        <ul>
+        {% for e in empleados %}
+            <li>
+    <strong>{{ e.numero_empleado }}</strong> — {{ e.nombre }} {{ e.apellido }}
+</li>
+        {% empty %}
+            <li>No hay empleados</li>
+        {% endfor %}
+        </ul>
+{% endblock %}
+
+
+
+

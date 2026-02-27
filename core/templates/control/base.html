@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control SaaS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+        .sidebar {
+            height: 100vh;
+            background: #1f2937;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            background: #374151;
+            display: block;
+            padding-left: 10px;
+        }
+        .card {
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        
+        <!-- Sidebar -->
+        <div class="col-md-2 sidebar p-3">
+            <h4>Control SaaS</h4>
+            <hr>
+            <p>{{ request.user.username }}</p>
+            <a href="/dashboard/">Dashboard</a><br>
+            <a href="{% url 'nucleo:checador' %}">Checador</a><br>
+            <a href="/admin/">Administración</a><br><br>
+            <hr>
+            <form action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button class="btn btn-link text-white p-0">Cerrar sesión</button>
+</form>
+        </div>
+
+        <!-- Contenido -->
+        <div class="col-md-10 p-4">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+        </div>
+</div>
+
+<script>
+    function actualizarReloj() {
+        const ahora = new Date();
+        document.getElementById("reloj").innerHTML =
+            ahora.toLocaleTimeString();
+    }
+    setInterval(actualizarReloj, 1000);
+</script><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

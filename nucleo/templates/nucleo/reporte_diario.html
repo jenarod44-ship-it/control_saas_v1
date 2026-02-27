@@ -1,0 +1,54 @@
+{% extends "control/base.html" %}
+
+{% block content %}
+
+<h2>Reporte diario</h2>
+
+<form method="get" class="mb-3">
+    <input type="date" name="fecha_inicio" class="form-control mb-2" required>
+    <input type="date" name="fecha_fin" class="form-control mb-2" required>
+</form>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Empleado</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for f in filas %}
+        <tr>
+            <td>{{ f.empleado.nombre }}</td>
+            <td>{{ f.entrada|default:"-" }}</td>
+            <td>{{ f.salida|default:"-" }}</td>
+
+            <td>
+                {% if f.falta %}
+                    <span class="badge bg-danger">Falta</span>
+
+                {% elif f.tipo == "PERMISO" %}
+                    <span class="badge bg-info">Permiso</span>
+
+                {% elif f.tipo == "VACACIONES" %}
+                    <span class="badge bg-primary">Vacaciones</span>
+
+                {% elif f.tipo == "INCAPACIDAD" %}
+                    <span class="badge bg-dark">Incapacidad</span>
+
+                {% elif f.entrada and not f.salida %}
+                    <span class="badge bg-warning">Pendiente salida</span>
+
+                {% else %}
+                    <span class="badge bg-success">Completo</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "control/base.html" %}
+{% block extra_css %}
+<style>
+.sidebar { display:none !important; }
+.col-md-10 { width:100% !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-3">Checador</h2>
+
+<!-- Reloj -->
+<div class="text-center mb-4">
+    <h1 id="reloj" style="font-size:60px; font-weight:bold;"></h1>
+</div>
+
+<!-- Mensaje -->
+{% if mensaje %}
+<div id="estado" class="alert text-center" style="font-size:20px;">
+    {{ mensaje }}
+</div>
+{% endif %}
+{% if mensaje %}
+<div style="font-size:32px; font-weight:bold; text-align:center; margin-top:10px;">
+    {{ mensaje }}
+</div>
+{% endif %}
+
+<!-- Formulario -->
+<form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3 text-center">
+        <input 
+            name="numero"
+            placeholder="Número de empleado"
+            autofocus
+            required
+            class="form-control text-center"
+            style="font-size:28px; padding:15px;"
+        >
+    </div>
+
+    <button id="btnRegistro" class="btn btn-success w-100 py-3" style="font-size:20px;">
+        Registrar asistencia
+    </button>
+</form>
+
+<hr>
+
+<!-- Últimas asistencias -->
+<ul class="list-group">
+{% for a in ultimas %}
+<li class="list-group-item d-flex justify-content-between">
+    <span>{{ a.empleado.nombre }} - {{ a.fecha }}</span>
+ 
+
+          {% if a.tipo_dia != "NORMAL" %}
+              <span class="badge bg-info">{{ a.get_tipo_dia_display }}</span>
+          {% endif %}
+
+    <span>
+        {% if a.hora_entrada %}
+            <span class="badge bg-success">E {{ a.hora_entrada }}</span>
+        {% endif %}
+
+        {% if a.hora_salida %}
+            <span class="badge bg-danger">S {{ a.hora_salida }}</span>
+        {% endif %}
+    </span>
+</li>
+{% endfor %}
+</ul>
+
+<!-- Scripts -->
+<script>
+function actualizarReloj() {
+    const ahora = new Date();
+    document.getElementById("reloj").innerHTML =
+        ahora.toLocaleTimeString();
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+
+// Estado visual
+const estado = document.getElementById("estado");
+if (estado){
+    if (estado.innerText.includes("Entrada")){
+        estado.classList.add("alert-success");
+    } else if (estado.innerText.includes("Salida")){
+        estado.classList.add("alert-danger");
+    } else {
+        estado.classList.add("alert-warning");
+    }
+
+    const audio = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+    audio.play();
+}
+
+// Animación botón
+const btn = document.getElementById("btnRegistro");
+if(btn){
+    btn.addEventListener("click", () => {
+        btn.innerText = "Registrando...";
+        btn.classList.remove("btn-success");
+        btn.classList.add("btn-secondary");
+    });
+}
+</script>
+<script>
+setTimeout(() => {
+    location.reload();
+}, 30000);
+</script>
+<script>
+document.body.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    }
+});
+</script>
+<script>
+const select = document.getElementById("empleadoSelect");
+if(select && localStorage.getItem("ultimoEmpleado")){
+    select.value = localStorage.getItem("ultimoEmpleado");
+}
+
+if(select){
+    select.addEventListener("change", () => {
+        localStorage.setItem("ultimoEmpleado", select.value);
+    });
+}
+
+const select = document.getElementById("empleadoSelect");
+if(select){ select.focus(); }
+
+window.scrollTo(0, document.body.scrollHeight);
+<script>
+setTimeout(() => {
+    const estado = document.getElementById("estado");
+    if(estado){ estado.style.display = "none"; }
+}, 4000);
+</script>
+
+{% endblock %}
+
+
