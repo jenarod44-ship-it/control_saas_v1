@@ -1,0 +1,26 @@
+<h2>Permisos</h2>
+
+
+{% if mensaje %}
+<div class="alert alert-info">{{ mensaje }}</div>
+{% endif %}
+
+<form method="post" action="/asistencia/permisos/">
+    {% csrf_token %}
+
+    <input type="number" name="numero_empleado" required>
+
+    <button type="submit" name="tipo" value="SALIDA_PERMISO">
+        Salida con permiso
+    </button>
+
+    <button type="submit" name="tipo" value="REGRESO">
+        Regreso
+    </button>
+</form>
+
+<hr>
+
+<a href="{% url 'asistencia:checador' %}" class="btn btn-secondary w-100">
+    ← Volver al checador
+</a>

@@ -30,20 +30,8 @@
 <!-- Formulario -->
 <form method="post">
     {% csrf_token %}
-
-    <div class="mb-3 text-center">
-        <input 
-            name="numero"
-            placeholder="Número de empleado"
-            autofocus
-            required
-            class="form-control text-center"
-            style="font-size:28px; padding:15px;"
-        >
-    </div>
-
-    <button id="btnRegistro" class="btn btn-success w-100 py-3" style="font-size:20px;">
-        Registrar asistencia
+    <button type="submit" class="btn btn-primary">
+        CHECAR
     </button>
 </form>
 
@@ -109,11 +97,6 @@ if(btn){
 }
 </script>
 <script>
-setTimeout(() => {
-    location.reload();
-}, 30000);
-</script>
-<script>
 document.body.addEventListener("click", () => {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
@@ -124,7 +107,7 @@ document.body.addEventListener("click", () => {
 const select = document.getElementById("empleadoSelect");
 if(select && localStorage.getItem("ultimoEmpleado")){
     select.value = localStorage.getItem("ultimoEmpleado");
-}
+}   
 
 if(select){
     select.addEventListener("change", () => {

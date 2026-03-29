@@ -1,0 +1,67 @@
+{% extends "control/base.html" %}
+
+{% block content %}
+
+
+<h2>Movimientos</h2>
+
+<hr>
+
+<h4>Reporte de Horas Extra</h4>
+
+<form method="get">
+    Desde:
+    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}">
+    Hasta:
+    <input type="date" name="fecha_fin" value="{{ fecha_fin }}">
+    <button type="submit">Calcular</button>
+</form>
+
+{% if fecha_inicio and fecha_fin %}
+    <p><strong>Total horas extra del rango: {{ context_total_horas_extra }}</strong></p>
+
+    <a href="{% url 'movimientos:exportar_horas_extra_excel' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}">
+        Descargar Excel
+    </a>
+{% endif %}
+
+<hr>
+
+<h3>Detalle de Movimientos</h3>
+
+{% for m in movimientos %}
+<div style="border:1px solid #ddd; padding:10px; margin-bottom:8px; border-radius:6px;">
+
+    <div style="font-weight:bold;">
+        {{ m.fecha }}
+    </div>
+
+    <div>
+        <strong>{{ m.empleado }}</strong>
+    </div>
+
+    {% if m.tipo == "ASISTENCIA" %}
+        <div style="color:green;">
+            🟢 Asistencia
+        </div>
+        <div>{{ m.detalle }}</div>
+
+    {% elif m.tipo == "TIEMPO EXTRA" %}
+        <div style="color:purple;">
+            🟣 Tiempo Extra
+        </div>
+        <div>{{ m.detalle }}</div>
+
+    {% elif m.tipo == "INCIDENCIA" %}
+        <div style="color:orange;">
+            🟡 Incidencia
+        </div>
+        <div>{{ m.detalle }}</div>
+    {% endif %}
+
+</div>
+{% empty %}
+<p>No hay movimientos en el rango seleccionado.</p>
+{% endfor %}
+
+{% endblock %}

@@ -1,0 +1,78 @@
+<nav style="margin-bottom:15px; font-size:14px; color:#666;">
+<a href="{% url 'core:dashboard' %}">Panel de Control</a> /
+<strong>Asistencia</strong>
+</nav>
+
+<a href="{% url 'reportes:reporte_excel' %}?inicio={{ request.GET.inicio }}&fin={{ request.GET.fin }}&empleado={{ request.GET.empleado }}">
+Exportar Excel
+</a>
+
+
+<h1>Reporte de Asistencia</h1>
+
+<a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+← Volver al Panel de Control
+</a>
+
+<form method="get">
+
+<input type="date" name="inicio" value="{{ request.GET.inicio }}">
+<input type="date" name="fin" value="{{ request.GET.fin }}">
+
+<select name="empleado">
+<option value="">Todos</option>
+{% for e in empleados %}
+<option value="{{ e.id }}" {% if request.GET.empleado == e.id|stringformat:"s" %}selected{% endif %}>
+{{ e.nombre }}
+</option>
+{% endfor %}
+</select>
+
+<button type="submit">Filtrar</button>
+
+</form>
+
+<p>DEBUG TOTAL: {{ resultados|length }}</p>
+
+<table border="1" class="table table-striped">
+
+<thead>
+<tr>
+    <th>Empleado</th>
+    <th>Fecha</th>
+    <th>Entrada</th>
+    <th>Salida</th>
+    <th>Estado</th>
+    <th>Incidencias</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in resultados %}
+<tr>
+    <td>{{ r.empleado.nombre }}</td>
+    <td>{{ r.fecha }}</td>
+    <td>{{ r.hora_entrada|default:"--" }}</td>
+    <td>{{ r.hora_salida|default:"--" }}</td>
+    <td>{{ r.estado|default:"--" }}</td>
+    <td>{{ r.salida_permiso|default:"--" }}</td>
+    <td>{{ r.regreso_permiso|default:"--" }}</td>
+
+    <td>
+    {% if r.incidencias %}
+        {% for i in r.incidencias %}
+            <div style="color:red;">{{ i }}</div>
+        {% endfor %}
+    {% else %}
+        <span style="color:green;">OK</span>
+    {% endif %}
+</td>
+</tr>
+
+
+{% empty %}
+<tr>
+    <td colspan="4">No hay registros</td>
+</tr>
+{% endfor %}

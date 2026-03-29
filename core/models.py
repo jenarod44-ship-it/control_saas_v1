@@ -22,6 +22,13 @@ class Perfil(models.Model):
 
 class Incidencia(models.Model):
 
+    turno = models.ForeignKey(
+        "core.Turno",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
     empleado = models.ForeignKey("nucleo.Empleado", on_delete=models.CASCADE)
     tipo = models.CharField(max_length=30)
 
@@ -42,11 +49,24 @@ class IncidenciaDia(models.Model):
         on_delete=models.CASCADE,
         related_name="dias"
     )
+class Turno(models.Model):
+    empresa = models.ForeignKey("core.Empresa", on_delete=models.CASCADE)
 
-    class Meta:
-        unique_together = ("empleado", "fecha")
+    nombre = models.CharField(max_length=100)
+
+    hora_entrada = models.TimeField()
+    hora_salida = models.TimeField()
+
+    tolerancia_minutos = models.IntegerField(default=5)
+
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.empleado} - {self.fecha} - {self.tipo}"
+        return f"{self.nombre} ({self.hora_entrada} - {self.hora_salida})"    
+
+    class Meta:
+        unique_together = ("empresa", "nombre")
+
+    
 
 

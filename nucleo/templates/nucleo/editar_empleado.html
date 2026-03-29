@@ -1,0 +1,17 @@
+{% extends "control/base.html" %}
+
+{% block content %}
+
+<h3>Editar empleado</h3>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn btn-success">
+        Guardar cambios
+    </button>
+
+</form>
+
+{% endblock %}

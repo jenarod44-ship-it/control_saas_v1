@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
@@ -53,6 +54,9 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'saas',
     'asistencia',
+    "movimientos.apps.MovimientosConfig",
+    'reportes',
+    'checador',
 ]
 
 
@@ -93,14 +97,19 @@ WSGI_APPLICATION = 'control_saas.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+import os
+
+# Forzar codificación UTF-8 para psycopg2 en Windows
+os.environ["PGCLIENTENCODING"] = "UTF8"
+os.environ["LANG"] = "en_US.UTF-8"
+os.environ["LC_ALL"] = "en_US.UTF-8"
+
+
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'control_saas',
-        'USER': 'control_user',
-        'PASSWORD': 'control123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -152,5 +161,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+LOGIN_URL = "/admin/login/"
 
 

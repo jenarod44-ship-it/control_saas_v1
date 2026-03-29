@@ -4,64 +4,146 @@
 
 <h2>Panel de Control</h2>
 
-<a href="{% url 'crear_empleado' %}" class="btn btn-primary mb-3">
-    Nuevo empleado
-</a>
+<p>Empresa: {{ empresa }}</p>
+<div class="container">
 
-<a href="{% url 'nucleo:incidencias' %}" class="btn btn-warning mb-3 ms-2">
-    Incidencias
-</a>
+<div class="row">
 
-<a href="{% url 'nucleo:crear_incidencia' %}" class="btn btn-secondary mb-3 ms-2">
-    Registrar incidencia
-</a>
-</a>
-<p>Empresa actual: {{ empresa }}</p>
-<p>Total empleados activos: {{ total_empleados }}</p>
-<p id="reloj" class="text-muted"></p>
+<div class="col-md-2">
+<div class="card text-bg-success">
+<div class="card-body">
+<h5>Presentes</h5>
+<h2>{{ presentes }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card text-bg-warning">
+<div class="card-body">
+<h5>Retardos</h5>
+<h2>{{ retardos }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card text-bg-danger">
+<div class="card-body">
+<h5>Faltas</h5>
+<h2>{{ faltas }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card text-bg-primary">
+<div class="card-body">
+<h5>Incidencias</h5>
+<h2>{{ incidencias }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card text-bg-dark">
+<div class="card-body">
+<h5>Tiempo Extra</h5>
+<h2>{{ tiempo_extra }}</h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card text-bg-secondary">
+<div class="card-body">
+<h5>Total</h5>
+<h2>{{ total_empleados }}</h2>
+</div>
+</div>
+</div>
+
+</div>    
+
+
 
 <div class="row mt-4">
 
-    <div class="col-md-4">
+    <!-- 🟦 IZQUIERDA (REPORTES) -->
+    <div class="col-md-6">
         <div class="card shadow p-3">
-            <h5>Total empleados activos</h5>
-            <h2>{{ total_empleados }}</h2>
+
+            <h5>Reportes</h5>
+
+            <div class="d-grid gap-2">
+
+                <a href="{% url 'reportes:asistencia' %}" class="btn btn-outline-primary">
+                    📊 Asistencia
+                </a>
+
+                <a href="{% url 'reportes:incidencias' %}" class="btn btn-outline-warning">
+                    ⚠️ Incidencias
+                </a>
+
+                <a href="{% url 'reportes:movimientos' %}" class="btn btn-outline-info">
+                    🔄 Movimientos
+                </a>
+
+                <a href="{% url 'reportes:tiempos_extra' %}" class="btn btn-outline-success">
+                    ⏱ Tiempo extra
+                </a>
+
+                <a href="{% url 'reportes:permisos' %}" class="btn btn-outline-dark">
+                    📋 Permisos
+                </a>
+
+            </div>
+
         </div>
     </div>
-    <div class="col-md-4">
+
+    <!-- 🟨 DERECHA (ACCESOS RÁPIDOS) -->
+    <div class="col-md-6">
         <div class="card shadow p-3">
-            <h5>Ausencias justificadas</h5>
-            <h2>{{ ausencias_justificadas }}</h2>
+
+            <h5>Accesos rápidos</h5>
+
+            <div class="d-grid gap-2">
+
+                <a href="{% url 'core:estado_dia' %}" class="btn btn-success">
+                    📅 Estado del día
+                </a>
+
+                <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-warning">
+                    ⚠️ Incidencias
+                </a>
+
+                <a href="/admin/nucleo/empleado/" class="btn btn-dark">
+                    👥 Empleados
+                </a>
+
+            </div>
+
         </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card shadow p-3">
-            <h5>Asistencias hoy</h5>
-            <h2>{{ asistencias_hoy }}</h2>
-        </div>
-    </div>
+</div>
 
-    <div class="col-md-4">
-        <div class="card shadow p-3">
-            <h5>Sin entrada</h5>
-            <h2>{{ empleados_sin_entrada }}</h2>
-        </div>
-    </div>
+<div class="d-grid gap-2 mt-3">
 
-        </div><hr class="mt-4">
+    <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">
+        ⏱ Checador
+    </a>
 
-        <h4>Lista de empleados</h4>
+    <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">
+        🔓 Permisos
+    </a>
 
-        <ul>
-        {% for e in empleados %}
-            <li>
-    <strong>{{ e.numero_empleado }}</strong> — {{ e.nombre }} {{ e.apellido }}
-</li>
-        {% empty %}
-            <li>No hay empleados</li>
-        {% endfor %}
-        </ul>
+    <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">
+        ➕ Tiempo Extra
+    </a>
+
+
 {% endblock %}
 
 

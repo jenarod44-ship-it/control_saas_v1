@@ -1,112 +1,82 @@
-from core.utils import obtener_empresa_usuario
-from django.shortcuts import render
+# Django
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.utils import timezone
-from core.models import Perfil
-from asistencia.models import Asistencia
 from django.http import HttpResponse
+
+# Python
 import csv
-from core.utils import obtener_empresa_usuario
-from datetime import timedelta
-from .models import IncidenciaDia
+from datetime import timedelta, time
+
+# Core
+from core.models import Perfil
+from core.utils import obtener_empresa_usuario, calcular_estado_asistencia
+from core.services.company_service import create_company
+from core.services.incidencias import generar_incidencias_por_rango
+
+# Otras apps
+from asistencia.models import Asistencia
+from nucleo.models import Empleado
+
+# Modelos locales
+from .models import Incidencia, IncidenciaDia
 from .forms import IncidenciaForm
-# imports
-from datetime import timedelta
-from .models import IncidenciaDia
-from .models import Incidencia
-from django.apps import apps
-Empleado = apps.get_model("nucleo", "Empleado")
 
-def generar_incidencias_por_rango(incidencia):
+def create_company_view(request):
 
-    fecha = incidencia.fecha_inicio
+    if request.method == "POST":
+        form = CompanyForm(request.POST)
 
-    while fecha <= incidencia.fecha_fin:
+        if form.is_valid():
+            create_company(request.user, form)
+            return redirect("dashboard")
 
-        IncidenciaDia.objects.get_or_create(
-            empleado=incidencia.empleado,
-            fecha=fecha,
-            defaults={
-                "tipo": incidencia.tipo,
-                "incidencia": incidencia
-            }
-        )
+    else:
+        form = CompanyForm()
 
-        fecha += timedelta(days=1)
+    return render(request, "core/company_form.html", {"form": form})
 
+    
 
-@login_required
-def dashboard(request):
-    empresa = obtener_empresa_usuario(request.user)
-    hoy = timezone.localdate()
-
-    empleados = Empleado.objects.filter(empresa=empresa, activo=True)
-
-    asistencias_hoy = Asistencia.objects.filter(fecha=hoy, empresa=empresa)
-
-    asistencias_normales = asistencias_hoy.filter(tipo_dia="NORMAL")
-
-    empleados_con_entrada = asistencias_normales.filter(
-        hora_entrada__isnull=False
-    ).count()
-
-    ausencias_justificadas = asistencias_hoy.exclude(tipo_dia="NORMAL").count()
-
-    empleados_sin_entrada = empleados.count() - empleados_con_entrada - ausencias_justificadas
-    asistencias_reales = asistencias_normales.count()
-
-    context = {
-        "empresa": empresa,
-        "empleados": empleados,   # ⭐ ESTA ES LA CLAVE
-        "total_empleados": empleados.count(),
-        "asistencias_hoy": asistencias_reales,
-        "empleados_sin_entrada": empleados_sin_entrada,
-        "ausencias_justificadas": ausencias_justificadas,
-    }
-
-    return render(request, "control/dashboard.html", context)
-
-
-@login_required
-def reporte_excel(request):
-    perfil = Perfil.objects.get(user=request.user)
-    empresa = perfil.empresa
-    hoy = timezone.localdate()
-    return response
-
-    asistencias_hoy = Asistencia.objects.filter(fecha=hoy)
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="reporte_asistencia.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow(['Empleado', 'Entrada', 'Salida'])
-
-    for asistencia in asistencias_hoy:
-        writer.writerow([
-            asistencia.empleado.nombre,
-            asistencia.hora_entrada,
-            asistencia.hora_salida
-        ])
 @login_required
 def crear_empleado(request):
 
+    empresa = obtener_empresa_usuario(request.user)
+
     if request.method == "POST":
-        empresa = obtener_empresa_usuario(request.user)
 
+        nombre = request.POST.get("nombre")
+        numero = request.POST.get("numero_empleado")
+        departamento_id = request.POST.get("departamento")
+
+        # 🔎 Verificar duplicado
+        existe = Empleado.objects.filter(
+            empresa=empresa,
+            numero_empleado=numero
+        ).exists()
+
+        if existe:
+            return render(request, "nucleo/crear_empleado.html", {
+                "error": "Ese número de empleado ya existe"
+            })
+
+        # Crear empleado
         Empleado.objects.create(
-    empresa=empresa,
-    nombre=request.POST.get("nombre"),
-    numero_empleado=request.POST.get("numero"),
-)
+            empresa=empresa,
+            nombre=nombre,
+            numero_empleado=numero,
+            departamento_id=departamento_id
+        )
 
-        return redirect("dashboard")
+        return redirect("core:dashboard")
 
     return render(request, "control/crear_empleado.html")
 
     
 from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 
 @login_required
 def crear_incidencia(request):
@@ -126,7 +96,7 @@ def crear_incidencia(request):
 
         if not empleado:
             messages.error(request, "Empleado desconocido para tu empresa")
-            return redirect("crear_incidencia")
+            return redirect("nucleo:crear_incidencia")
 
         incidencia = Incidencia.objects.create(
             empleado=empleado,
@@ -138,13 +108,23 @@ def crear_incidencia(request):
         generar_incidencias_por_rango(incidencia)
 
         messages.success(request, "Incidencia registrada correctamente")
-        return redirect("dashboard")
+        return redirect("core:dashboard")
 
     return render(
         request,
         "nucleo/incidencias.html",
         {"empleados": empleados}
     )
+
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.shortcuts import render
+
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+
+
+
 
 
 

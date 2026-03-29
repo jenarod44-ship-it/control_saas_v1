@@ -23,7 +23,7 @@ def crear_incidencia(request):
 
         generar_incidencias_por_rango(incidencia)
 
-        return redirect("dashboard")
+        return redirect("core:dashboard")
 
     return render(
         request,

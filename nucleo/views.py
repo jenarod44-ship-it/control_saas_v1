@@ -12,83 +12,82 @@ from core.views import generar_incidencias_por_rango
 from datetime import datetime
 from django.contrib import messages
 from django.db.models import Q
+from asistencia.models import Movimiento
+from django.utils import timezone
+from asistencia.models import TiempoExtra
+from core.models import Incidencia
+from django.shortcuts import get_object_or_404, redirect
+from .models import Empleado
+from .forms import EmpleadoForm
+from django.shortcuts import render, redirect
+from django.shortcuts import render
+from asistencia.models import TiempoExtra
 
-Empleado = apps.get_model("nucleo", "Empleado")
-Incidencia = apps.get_model("core", "Incidencia")
 
-@login_required
-def checador(request):
-    empresa = obtener_empresa_usuario(request.user)
-    mensaje = None
 
-    # ⭐ SIEMPRE disponible
-    ultimas = Asistencia.objects.filter(
-        empresa=empresa
-    ).order_by("-id")[:5]
+def lista_empleados(request):
+
+    empleados = Empleado.objects.all()
+
+    context = {
+        "empleados": empleados
+    }
+
+    return render(request, "nucleo/lista_empleados.html", context)
+
+
+def crear_empleado(request):
 
     if request.method == "POST":
+        nombre = request.POST.get("nombre")
 
-        numero = request.POST.get("numero")
-
-        empleado = Empleado.objects.filter(
-            empresa=empresa,
-            numero_empleado=numero,
-            activo=True
-        ).first()
-
-        if not empleado:
-            mensaje = "Empleado no encontrado"
-            return render(request, "nucleo/checador.html", {
-                "mensaje": mensaje,
-                "ultimas": ultimas
-            })
-
-        hoy = timezone.localdate()
-
-        asistencia, created = Asistencia.objects.get_or_create(
-            empresa=empresa,
-            empleado=empleado,
-            fecha=hoy
+        Empleado.objects.create(
+            nombre=nombre
         )
 
-        # ⭐ VALIDAR INCIDENCIA
-        if asistencia.tipo_dia != "NORMAL":
-            mensaje = f"{empleado.nombre} tiene {asistencia.get_tipo_dia_display()} hoy"
-            return render(request, "nucleo/checador.html", {
-                "mensaje": mensaje,
-                "ultimas": ultimas
-            })
+        return redirect("nucleo:lista_empleados")
 
-        if asistencia.hora_entrada is None:
-            asistencia.hora_entrada = timezone.localtime().time()
-            hora = timezone.localtime().strftime("%H:%M")
-            mensaje = f"🟢 Bienvenido {empleado.nombre} — {hora}"
+    return render(request, "nucleo/crear_empleado.html")
 
-        elif asistencia.hora_salida is None:
-            asistencia.hora_salida = timezone.localtime().time()
-            hora = timezone.localtime().strftime("%H:%M")
-            mensaje = f"🔴 Hasta luego {empleado.nombre} — {hora}"
+@login_required
+def editar_empleado(request, empleado_id):
 
-        else:
-            hora = timezone.localtime().strftime("%H:%M")
-            mensaje = f"{empleado.nombre}, ya registraste tu jornada hoy — {hora}"
+    empresa = obtener_empresa_usuario(request.user)
 
-        asistencia.save()
+    empleado = get_object_or_404(
+        Empleado,
+        id=empleado_id,
+        empresa=empresa
+    )
 
-        # ⭐ refrescar lista
-        ultimas = Asistencia.objects.filter(
-            empresa=empresa
-        ).order_by("-id")[:5]
+    if request.method == "POST":
+        form = EmpleadoForm(request.POST, instance=empleado)
+        if form.is_valid():
+            form.save()
+            return redirect("core:dashboard")
 
-        return render(request, "nucleo/checador.html", {
-            "mensaje": mensaje,
-            "ultimas": ultimas
-        })
+    else:
+        form = EmpleadoForm(instance=empleado)
 
-    return render(request, "nucleo/checador.html", {
-        "mensaje": mensaje,
-        "ultimas": ultimas
+    return render(request, "nucleo/editar_empleado.html", {
+        "form": form,
+        "empleado": empleado
     })
+
+hoy = timezone.localdate()
+
+
+Empleado = apps.get_model("nucleo", "Empleado")
+
+Incidencia = apps.get_model("core", "Incidencia")
+
+from django.utils import timezone
+from django.shortcuts import render
+from nucleo.models import Empleado
+from asistencia.models import Asistencia, Movimiento
+
+
+
 @login_required
 def reporte_diario(request):
     empresa = obtener_empresa_usuario(request.user)
@@ -99,7 +98,9 @@ def reporte_diario(request):
     else:
         fecha = timezone.localdate()
 
-    empleados = Empleado.objects.filter(empresa=empresa, activo=True)
+    empleados = Empleado.objects.filter(
+        empresa=empresa
+    ).order_by("numero_empleado")
 
     asistencias = Asistencia.objects.filter(
         empresa=empresa,
@@ -119,6 +120,30 @@ def reporte_diario(request):
             "tipo": a.tipo_dia if a else None,
             "falta": a is None
         })
+
+        writer.writerow([
+            empleado.nombre,
+            fecha,
+            entrada,
+            permiso,
+            regreso,
+            salida,
+            extra_inicio,
+            extra_fin,
+            estado
+        ])
+
+        writer.writerow([
+            "Empleado",
+            "Fecha",
+            "Entrada",
+            "Salida permiso",
+            "Regreso",
+            "Salida",
+            "Extra inicio",
+            "Extra fin",
+            "Estado"
+        ])
 
     return render(request, "nucleo/reporte_diario.html", {
         "filas": filas,
@@ -169,6 +194,59 @@ def incidencias(request):
 
     # ✅ ESTE RETURN ES EL QUE TE FALTABA
     return render(request, "nucleo/incidencias.html", {"empleados": empleados})
+@login_required
+def lista_incidencias(request):
+
+    empresa = obtener_empresa_usuario(request.user)
+
+    incidencias = Incidencia.objects.filter(
+        empleado__empresa=empresa
+    ).order_by("-fecha_inicio")
+
+    return render(request, "nucleo/lista_incidencias.html", {
+        "incidencias": incidencias
+    })
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def crear_incidencia(request):
+
+    empresa = obtener_empresa_usuario(request.user)
+
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True
+    )
+
+    if request.method == "POST":
+
+        empleado_id = request.POST.get("empleado")
+
+        empleado = empleados.filter(id=empleado_id).first()
+
+        if not empleado:
+            messages.error(request, "Empleado desconocido para tu empresa")
+            return redirect("nucleo:crear_incidencia")
+
+        incidencia = Incidencia.objects.create(
+            empleado=empleado,
+            tipo=request.POST.get("tipo"),
+            fecha_inicio=request.POST.get("fecha_inicio"),
+            fecha_fin=request.POST.get("fecha_fin"),
+        )
+
+        generar_incidencias_por_rango(incidencia)
+
+        messages.success(request, "Incidencia registrada correctamente")
+        return redirect("core:dashboard")
+
+    return render(
+        request,
+        "nucleo/incidencias.html",
+        {"empleados": empleados}
+    )
 
 
       
