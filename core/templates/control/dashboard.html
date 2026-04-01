@@ -2,6 +2,18 @@
 
 {% block content %}
 
+<h4>Empresas</h4>
+
+<ul>
+{% for e in empresas %}
+    <li>
+        <a href="{% url 'core:cambiar_empresa' e.empresa.id %}">
+            {{ e.empresa.nombre }}
+        </a>
+    </li>
+{% endfor %}
+</ul>
+
 <h2>Panel de Control</h2>
 
 <p>Empresa: {{ empresa }}</p>

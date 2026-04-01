@@ -97,6 +97,20 @@ def obtener_empresa_usuario(user):
 
 app_name = "core"
 
+from core.models import Empresa, EmpresaUsuario
+
+def obtener_empresa_actual(request):
+    empresa_id = request.session.get("empresa_id")
+
+    if empresa_id:
+        return Empresa.objects.filter(id=empresa_id).first()
+
+    relacion = EmpresaUsuario.objects.filter(
+        usuario=request.user
+    ).first()
+
+    return relacion.empresa if relacion else None
+
 def empleado_trabaja(empleado, fecha):
 
     dia = fecha.weekday()

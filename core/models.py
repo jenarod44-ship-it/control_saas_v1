@@ -67,6 +67,17 @@ class Turno(models.Model):
     class Meta:
         unique_together = ("empresa", "nombre")
 
+from django.contrib.auth.models import User
+
+class EmpresaUsuario(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("usuario", "empresa")
+
+    def __str__(self):
+        return f"{self.usuario} - {self.empresa}"
     
 
 

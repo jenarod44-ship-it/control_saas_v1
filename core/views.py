@@ -4,6 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.http import HttpResponse
+from core.forms import CompanyForm
+from core.utils import create_company
+from core.forms import CompanyForm
+
 
 # Python
 import csv
@@ -78,6 +82,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
+
 @login_required
 def crear_incidencia(request):
 
@@ -116,12 +121,12 @@ def crear_incidencia(request):
         {"empleados": empleados}
     )
 
-from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.shortcuts import render
 
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
+
+
+
 
 
 

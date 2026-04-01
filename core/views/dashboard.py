@@ -37,6 +37,7 @@ def dashboard(request):
     presentes = 0
     retardos = 0
     faltas = 0
+    
 
     for empleado in empleados:
 
@@ -51,6 +52,12 @@ def dashboard(request):
 
         elif estado == "FALTA":
             faltas += 1
+
+    from core.models import EmpresaUsuario
+
+    empresas = EmpresaUsuario.objects.filter(
+        usuario=request.user
+    ).select_related("empresa")
 
     context = {
         "empresa": empresa,
@@ -71,3 +78,6 @@ def home(request):
         return redirect("core:dashboard")
 
     return redirect("login")
+    
+    
+
