@@ -32,7 +32,6 @@ Exportar Excel
 
 </form>
 
-<p>DEBUG TOTAL: {{ resultados|length }}</p>
 
 <table border="1" class="table table-striped">
 
@@ -56,9 +55,6 @@ Exportar Excel
     <td>{{ r.hora_entrada|default:"--" }}</td>
     <td>{{ r.hora_salida|default:"--" }}</td>
     <td>{{ r.estado|default:"--" }}</td>
-    <td>{{ r.salida_permiso|default:"--" }}</td>
-    <td>{{ r.regreso_permiso|default:"--" }}</td>
-
     <td>
     {% if r.incidencias %}
         {% for i in r.incidencias %}

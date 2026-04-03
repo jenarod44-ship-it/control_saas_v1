@@ -13,7 +13,7 @@ from core.calculadora import CalculadoraAsistencia
 @login_required
 def estado_dia(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     # 🔥 usar una sola fecha
     fecha_str = request.GET.get("fecha")

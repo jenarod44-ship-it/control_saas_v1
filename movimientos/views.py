@@ -54,7 +54,7 @@ def obtener_tiempos_extra(empresa, inicio=None, fin=None, empleado_id=None):
 @login_required
 def lista_movimientos(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")

@@ -49,16 +49,16 @@ def crear_empleado(request):
 
     return render(request, "nucleo/crear_empleado.html")
 
+from django.shortcuts import get_object_or_404
+
 @login_required
-def editar_empleado(request, empleado_id):
-
-    empresa = obtener_empresa_usuario(request.user)
-
+def editar_empleado(request, id):
     empleado = get_object_or_404(
-        Empleado,
-        id=empleado_id,
-        empresa=empresa
+        Empleado.objects.for_empresa(request.empresa),
+        id=id
     )
+
+    
 
     if request.method == "POST":
         form = EmpleadoForm(request.POST, instance=empleado)
@@ -90,7 +90,7 @@ from asistencia.models import Asistencia, Movimiento
 
 @login_required
 def reporte_diario(request):
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     fecha = request.GET.get("fecha")
     if fecha:
@@ -152,7 +152,7 @@ def reporte_diario(request):
 @login_required
 def incidencias(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
@@ -197,7 +197,7 @@ def incidencias(request):
 @login_required
 def lista_incidencias(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     incidencias = Incidencia.objects.filter(
         empleado__empresa=empresa
@@ -213,7 +213,7 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def crear_incidencia(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     empleados = Empleado.objects.filter(
         empresa=empresa,

@@ -118,3 +118,32 @@ def empleado_trabaja(empleado, fecha):
     dias = empleado.dias_trabajo.split(",")
 
     return str(dia) in dias
+
+def obtener_empresa_usuario(request):
+    user = request.user
+
+    empresa_id = request.session.get("empresa_id")
+
+    print("SESSION EMPRESA_ID:", empresa_id)   # 👈 AGREGAR
+
+    if empresa_id:
+        relacion = EmpresaUsuario.objects.filter(
+            usuario=user,
+            empresa_id=empresa_id
+        ).select_related("empresa").first()
+
+        print("RELACION ENCONTRADA:", relacion)  # 👈 AGREGAR
+
+        if relacion:
+            return relacion.empresa
+
+    relacion = EmpresaUsuario.objects.filter(
+        usuario=user
+    ).select_related("empresa").first()
+
+    print("FALLBACK RELACION:", relacion)  # 👈 AGREGAR
+
+    if relacion:
+        return relacion.empresa
+
+    return None

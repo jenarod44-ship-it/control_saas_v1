@@ -10,15 +10,15 @@ class EmpresaMiddleware:
 
     def __call__(self, request):
 
-        request.empresa = None
+        pass
 
         if hasattr(request, "user") and request.user.is_authenticated:
             try:
-                request.empresa = request.user.perfil_saas.empresa
+                pass
             except Perfil.DoesNotExist:
-                request.empresa = None
+                pass
             except:
-                request.empresa = None
+                pass
 
         response = self.get_response(request)
         return response

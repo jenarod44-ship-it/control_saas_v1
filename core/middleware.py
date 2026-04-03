@@ -1,3 +1,6 @@
+from core.utils import obtener_empresa_usuario
+
+
 class EmpresaMiddleware:
 
     def __init__(self, get_response):
@@ -5,8 +8,11 @@ class EmpresaMiddleware:
 
     def __call__(self, request):
 
-        if request.user.is_authenticated and hasattr(request.user, "perfil_core"):
-            request.empresa = request.user.perfil_core.empresa
+        if request.user.is_authenticated:
+            empresa = obtener_empresa_usuario(request)
+            print("MIDDLEWARE EMPRESA:", empresa)   # 👈 DEBUG
+
+            request.empresa = empresa
         else:
             request.empresa = None
 

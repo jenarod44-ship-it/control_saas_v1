@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from asistencia.models import Asistencia
 from nucleo.models import Empleado
-from core.utils import obtener_empresa_usuario
 from core.services.asistencia_service import calcular_estado_asistencia
 from core.services.incidencias import generar_incidencias_por_rango
 from core.models import Incidencia
@@ -15,13 +14,20 @@ from django.shortcuts import render
 from django.db.models import Prefetch
 from core.utils import calcular_tiempo
 
+
 def reporte_asistencia(request):
     from nucleo.models import Empleado
     from core.utils import obtener_empresa_usuario
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
+
+    print("EMPRESA ACTUAL:", request.empresa)
+
 
     registros = obtener_asistencias_base(request)
+
+    
+    print("TOTAL REGISTROS:", registros.count())
     registros = aplicar_filtros_asistencia(request, registros)
     registros = registros.order_by("empleado__numero_empleado", "-fecha")
 
@@ -29,6 +35,10 @@ def reporte_asistencia(request):
         empresa=empresa,
         activo=True
     )
+
+    
+
+    
 
     from core.utils import calcular_estado_asistencia
 
@@ -38,7 +48,8 @@ def reporte_asistencia(request):
 
     for r in registros:
         r.estado = calcular_estado_asistencia(r.empleado, r.fecha)
-        r.incidencias = calcular_incidencias_asistencia(r.empleado, r.fecha)  
+        r.incidencias = calcular_incidencias_asistencia(r.empleado, r.fecha) 
+         
        
     return render(request, "reportes/asistencia.html", {
         "resultados": registros,
@@ -49,11 +60,13 @@ def reporte_asistencia(request):
     })
 
 
+
+
 def obtener_asistencias_base(request):
     from core.utils import obtener_empresa_usuario
     from asistencia.models import Asistencia
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     return Asistencia.objects.filter(
         empleado__empresa=empresa
@@ -102,7 +115,7 @@ def reporte_permisos(request):
     from nucleo.models import Empleado
     from core.utils import obtener_empresa_usuario
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
@@ -214,7 +227,7 @@ def exportar_tiempos_extra_excel(request):
     import csv
     from django.http import HttpResponse
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
@@ -293,7 +306,7 @@ from django.http import HttpResponse
 def exportar_movimientos_excel(request):
 
     # 1. empresa
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     # 2. parámetros (UNA sola vez)
     fecha_inicio = request.GET.get("inicio")
@@ -420,7 +433,7 @@ def obtener_tiempos_extra(empresa, inicio=None, fin=None, empleado_id=None):
 
 def reporte_tiempos_extra(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
@@ -475,7 +488,7 @@ from django.shortcuts import render
 
 def reporte_movimientos(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
@@ -529,21 +542,18 @@ def reporte_movimientos(request):
 
 def reporte_incidencias(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    if empleado_id and empleado_id != "":
-       incidencias = incidencias.filter(
-            empleado_id=empleado_id
-        )
-
+    # ✅ PRIMERO crear queryset base
     incidencias = Incidencia.objects.filter(
         empleado__empresa=empresa
     ).select_related("empleado")
 
+    # ✅ luego aplicar filtros
     if inicio and fin:
         incidencias = incidencias.filter(fecha_inicio__range=[inicio, fin])
 
@@ -560,7 +570,6 @@ def reporte_incidencias(request):
         empresa=empresa,
         activo=True
     )
-
     context = {
         "incidencias": incidencias,
         "empleados": empleados,
@@ -584,7 +593,7 @@ def index(request):
 def exportar_incidencias_excel(request):
 
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
 
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")

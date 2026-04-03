@@ -11,7 +11,7 @@ from core.models import IncidenciaDia
 @login_required
 def dashboard(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = request.empresa
     hoy = timezone.localdate()
 
     empleados = Empleado.objects.filter(

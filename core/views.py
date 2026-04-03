@@ -46,7 +46,7 @@ def create_company_view(request):
 @login_required
 def crear_empleado(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     if request.method == "POST":
 
@@ -86,7 +86,7 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def crear_incidencia(request):
 
-    empresa = obtener_empresa_usuario(request.user)
+    empresa = obtener_empresa_usuario(request)
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
