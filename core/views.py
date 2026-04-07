@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from core.forms import CompanyForm
 from core.utils import create_company
 from core.forms import CompanyForm
+from core.decorators import solo_operativo, solo_admin
 
 
 # Python

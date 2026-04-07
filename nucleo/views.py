@@ -22,6 +22,7 @@ from .forms import EmpleadoForm
 from django.shortcuts import render, redirect
 from django.shortcuts import render
 from asistencia.models import TiempoExtra
+from core.decorators import solo_operativo, solo_admin
 
 
 

@@ -14,74 +14,79 @@
 {% endfor %}
 </ul>
 
-<h2>Panel de Control</h2>
+<h2 class="mt-3">Panel de Control</h2>
 
-<p>Empresa: {{ empresa }}</p>
-<div class="container">
+<p><strong>Empresa:</strong> {{ empresa }}</p>
 
-<div class="row">
-
-<div class="col-md-2">
-<div class="card text-bg-success">
-<div class="card-body">
-<h5>Presentes</h5>
-<h2>{{ presentes }}</h2>
-</div>
-</div>
-</div>
+<!-- 🔥 TARJETAS -->
+<div class="row g-3 mb-4">
 
 <div class="col-md-2">
-<div class="card text-bg-warning">
-<div class="card-body">
-<h5>Retardos</h5>
-<h2>{{ retardos }}</h2>
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-check-circle-fill text-success fs-3"></i>
+<h6 class="mt-2">Presentes</h6>
+<h2 class="fw-bold text-success">{{ presentes }}</h2>
 </div>
 </div>
 </div>
 
 <div class="col-md-2">
-<div class="card text-bg-danger">
-<div class="card-body">
-<h5>Faltas</h5>
-<h2>{{ faltas }}</h2>
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-clock-fill text-warning fs-3"></i>
+<h6 class="mt-2">Retardos</h6>
+<h2 class="fw-bold text-warning">{{ retardos }}</h2>
 </div>
 </div>
 </div>
 
 <div class="col-md-2">
-<div class="card text-bg-primary">
-<div class="card-body">
-<h5>Incidencias</h5>
-<h2>{{ incidencias }}</h2>
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-x-circle-fill text-danger fs-3"></i>
+<h6 class="mt-2">Faltas</h6>
+<h2 class="fw-bold text-danger">{{ faltas }}</h2>
 </div>
 </div>
 </div>
 
 <div class="col-md-2">
-<div class="card text-bg-dark">
-<div class="card-body">
-<h5>Tiempo Extra</h5>
-<h2>{{ tiempo_extra }}</h2>
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-exclamation-triangle-fill text-primary fs-3"></i>
+<h6 class="mt-2">Incidencias</h6>
+<h2 class="fw-bold text-primary">{{ incidencias }}</h2>
 </div>
 </div>
 </div>
 
 <div class="col-md-2">
-<div class="card text-bg-secondary">
-<div class="card-body">
-<h5>Total</h5>
-<h2>{{ total_empleados }}</h2>
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-hourglass-split text-dark fs-3"></i>
+<h6 class="mt-2">Tiempo Extra</h6>
+<h2 class="fw-bold text-dark">{{ tiempo_extra }}</h2>
 </div>
 </div>
 </div>
 
-</div>    
+<div class="col-md-2">
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-people-fill text-secondary fs-3"></i>
+<h6 class="mt-2">Total</h6>
+<h2 class="fw-bold text-secondary">{{ total_empleados }}</h2>
+</div>
+</div>
+</div>
 
+</div>
 
-
+<!-- 🔻 CONTENIDO ORIGINAL -->
 <div class="row mt-4">
 
-    <!-- 🟦 IZQUIERDA (REPORTES) -->
+    <!-- REPORTES -->
     <div class="col-md-6">
         <div class="card shadow p-3">
 
@@ -89,32 +94,18 @@
 
             <div class="d-grid gap-2">
 
-                <a href="{% url 'reportes:asistencia' %}" class="btn btn-outline-primary">
-                    📊 Asistencia
-                </a>
-
-                <a href="{% url 'reportes:incidencias' %}" class="btn btn-outline-warning">
-                    ⚠️ Incidencias
-                </a>
-
-                <a href="{% url 'reportes:movimientos' %}" class="btn btn-outline-info">
-                    🔄 Movimientos
-                </a>
-
-                <a href="{% url 'reportes:tiempos_extra' %}" class="btn btn-outline-success">
-                    ⏱ Tiempo extra
-                </a>
-
-                <a href="{% url 'reportes:permisos' %}" class="btn btn-outline-dark">
-                    📋 Permisos
-                </a>
+                <a href="{% url 'reportes:asistencia' %}" class="btn btn-outline-primary">📊 Asistencia</a>
+                <a href="{% url 'reportes:incidencias' %}" class="btn btn-outline-warning">⚠️ Incidencias</a>
+                <a href="{% url 'reportes:movimientos' %}" class="btn btn-outline-info">🔄 Movimientos</a>
+                <a href="{% url 'reportes:tiempos_extra' %}" class="btn btn-outline-success">⏱ Tiempo extra</a>
+                <a href="{% url 'reportes:permisos' %}" class="btn btn-outline-dark">📋 Permisos</a>
 
             </div>
 
         </div>
     </div>
 
-    <!-- 🟨 DERECHA (ACCESOS RÁPIDOS) -->
+    <!-- ACCESOS -->
     <div class="col-md-6">
         <div class="card shadow p-3">
 
@@ -122,17 +113,9 @@
 
             <div class="d-grid gap-2">
 
-                <a href="{% url 'core:estado_dia' %}" class="btn btn-success">
-                    📅 Estado del día
-                </a>
-
-                <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-warning">
-                    ⚠️ Incidencias
-                </a>
-
-                <a href="/admin/nucleo/empleado/" class="btn btn-dark">
-                    👥 Empleados
-                </a>
+                <a href="{% url 'core:estado_dia' %}" class="btn btn-success">📅 Estado del día</a>
+                <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-warning">⚠️ Incidencias</a>
+                <a href="/admin/nucleo/empleado/" class="btn btn-dark">👥 Empleados</a>
 
             </div>
 
@@ -141,20 +124,14 @@
 
 </div>
 
+<!-- BOTONES -->
 <div class="d-grid gap-2 mt-3">
 
-    <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">
-        ⏱ Checador
-    </a>
+    <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">⏱ Checador</a>
+    <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">🔓 Permisos</a>
+    <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">➕ Tiempo Extra</a>
 
-    <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">
-        🔓 Permisos
-    </a>
-
-    <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">
-        ➕ Tiempo Extra
-    </a>
-
+</div>
 
 {% endblock %}
 

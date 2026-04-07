@@ -6,10 +6,11 @@ from .models import TiempoExtra
 from asistencia.models import Asistencia, Movimiento, TiempoExtra
 from django.shortcuts import redirect
 from asistencia.models import Asistencia, Movimiento
+from core.decorators import solo_operativo
 
 
 
-@login_required
+@solo_operativo
 def permisos(request):
     
 
@@ -66,7 +67,7 @@ def permisos(request):
                 
 
 
-@login_required
+@solo_operativo
 def tiempo_extra(request):
 
     mensaje = None
@@ -141,7 +142,7 @@ from nucleo.models import Empleado
 from asistencia.models import Asistencia, Movimiento
 
 
-@login_required
+@solo_operativo
 def checador(request):
 
     mensaje = None

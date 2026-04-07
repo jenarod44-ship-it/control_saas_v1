@@ -8,6 +8,10 @@
 Exportar Excel
 </a>
 
+<a href="{% url 'reportes:incidencias_excel' %}?{{ request.GET.urlencode }}">
+    Exportar Excel Pro
+</a>
+
 <h1>Incidencias</h1>
 
 <form method="get" style="margin-bottom:20px;">
@@ -39,7 +43,7 @@ Exportar Excel
 <table border="1">
 
 <tr>
-<th>No.</th>
+<th>No. Empleado</th>
 <th>Empleado</th>
 <th>Tipo</th>
 <th>Inicio</th>
@@ -49,7 +53,7 @@ Exportar Excel
 {% for i in incidencias %}
 
 <tr>
-<td>{{ i.id }}</td>
+<td>{{ i.empleado.numero_empleado }}</td>
 <td>{{ i.empleado.nombre }}</td>
 <td>{{ i.tipo }}</td>
 <td>{{ i.fecha_inicio }}</td>

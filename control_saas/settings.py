@@ -9,6 +9,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 # SECURITY
 SECRET_KEY = "dev-key"
 DEBUG = True
@@ -161,6 +162,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
-LOGIN_URL = "/admin/login/"
+
 
 

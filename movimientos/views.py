@@ -10,6 +10,7 @@ from asistencia.models import Asistencia, TiempoExtra
 from asistencia.utils import calcular_horas_extra_por_rango, calcular_horas_extra_por_dia
 from core.models import Incidencia
 from core.utils import obtener_empresa_usuario
+from core.decorators import solo_operativo, solo_admin
 
 
 @login_required
@@ -26,6 +27,18 @@ def obtener_tiempos_extra(empresa, inicio=None, fin=None, empleado_id=None):
         tiempos = tiempos.filter(empleado_id=empleado_id)
 
     return tiempos.order_by("fecha")
+def exportar_tiempos_extra_csv(request):
+
+    tiempos = obtener_tiempos_extra(
+        empresa=request.empresa,
+        inicio=request.GET.get("inicio"),
+        fin=request.GET.get("fin"),
+        empleado_id=request.GET.get("empleado")
+    )
+
+    from collections import defaultdict
+    import csv
+    from django.http import HttpResponse
 
     por_empleado_dia = defaultdict(list)
 

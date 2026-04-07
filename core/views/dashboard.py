@@ -6,9 +6,9 @@ from core.utils import obtener_empresa_usuario, calcular_estado_asistencia
 from nucleo.models import Empleado
 from asistencia.models import Asistencia, TiempoExtra
 from core.models import IncidenciaDia
+from core.decorators import solo_operativo
 
-
-@login_required
+@solo_operativo
 def dashboard(request):
 
     empresa = request.empresa
@@ -72,12 +72,15 @@ def dashboard(request):
     return render(request, "control/dashboard.html", context)
 
 
+
+
 def home(request):
 
     if request.user.is_authenticated:
         return redirect("core:dashboard")
 
     return redirect("login")
+
     
     
 

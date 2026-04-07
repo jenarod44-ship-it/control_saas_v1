@@ -37,6 +37,7 @@ Exportar Excel
 <table border="1">
 
 <tr>
+<th>No. Empleado</th>
 <th>Empleado</th>
 <th>Fecha</th>
 <th>Inicio</th>
@@ -47,6 +48,7 @@ Exportar Excel
 {% for t in tiempos %}
 
 <tr>
+<td>{{ t.empleado.numero_empleado }}</td>
 <td>{{ t.empleado.nombre }}</td>
 <td>{{ t.fecha }}</td>
 <td>{{ t.hora_inicio|time:"H:i" }}</td>
@@ -63,7 +65,7 @@ Exportar Excel
 {% endfor %}
 
 <tr style="font-weight:bold;">
-<td colspan="4">TOTAL</td>
+<td colspan="5">TOTAL</td>
 <td>{{ total_horas }}</td>
 </tr>
 

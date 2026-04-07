@@ -63,6 +63,7 @@
 
 <thead>
 <tr>
+    <th>No. Empleado</th>
     <th>Empleado</th>
     <th>Fecha</th>
     <th>Salida</th>
@@ -74,6 +75,7 @@
 
 {% for r in resultados %}
 <tr>
+    <td>{{ r.numero_empleado }}</td>
     <td>{{ r.empleado }}</td>
     <td>{{ r.fecha }}</td>
     <td>{{ r.salida|default:"--" }}</td>
@@ -82,7 +84,7 @@
 
 {% empty %}
 <tr>
-    <td colspan="4">Sin registros</td>
+    <td colspan="5">Sin registros</td>
 </tr>
 {% endfor %}
 

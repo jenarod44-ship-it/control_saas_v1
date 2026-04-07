@@ -4,7 +4,11 @@
 </nav>
 
 <a href="{% url 'reportes:reporte_excel' %}?inicio={{ request.GET.inicio }}&fin={{ request.GET.fin }}&empleado={{ request.GET.empleado }}">
-Exportar Excel
+
+</a>
+
+<a href="{% url 'reportes:reporte_excel_xlsx' %}?{{ request.GET.urlencode }}">
+    Exportar Excel PRO
 </a>
 
 
@@ -32,11 +36,13 @@ Exportar Excel
 
 </form>
 
+<p>DEBUG TOTAL: {{ resultados|length }}</p>
 
 <table border="1" class="table table-striped">
 
 <thead>
 <tr>
+    <th>No. Empleado</th>
     <th>Empleado</th>
     <th>Fecha</th>
     <th>Entrada</th>
@@ -50,11 +56,13 @@ Exportar Excel
 
 {% for r in resultados %}
 <tr>
+    <td>{{ r.empleado.numero_empleado }}</td>
     <td>{{ r.empleado.nombre }}</td>
     <td>{{ r.fecha }}</td>
     <td>{{ r.hora_entrada|default:"--" }}</td>
     <td>{{ r.hora_salida|default:"--" }}</td>
     <td>{{ r.estado|default:"--" }}</td>
+
     <td>
     {% if r.incidencias %}
         {% for i in r.incidencias %}
