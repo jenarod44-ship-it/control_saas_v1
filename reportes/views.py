@@ -6,19 +6,149 @@ from core.services.incidencias import generar_incidencias_por_rango
 from core.models import Incidencia
 from asistencia.models import Movimiento
 from nucleo.models import Empleado
-from asistencia.models import TiempoExtra
 import csv
 from django.http import HttpResponse
-from core.utils import calcular_estado_asistencia
 from django.shortcuts import render
 from django.db.models import Prefetch
-from core.utils import calcular_tiempo
 from core.decorators import solo_operativo
+from core.utils.asistencia import debe_generar_falta
+from core.utils.laboral import es_dia_laboral
+from core.utils.asistencia import debe_generar_falta, es_tiempo_extra
+from datetime import time
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from django.http import HttpResponse
+from openpyxl.styles import Alignment
+
+
+def calcular_estado_asistencia(empleado, fecha):
+
+    print("DEPTO:", empleado.departamento)
+    print("TRABAJA FINES:", getattr(empleado.departamento, "trabaja_fines_semana", "NO EXISTE"))
+
+    asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
+
+    dia = fecha.weekday()
+
+    trabaja_fines = (
+        empleado.departamento and
+        getattr(empleado.departamento, "trabaja_fines_semana", False)
+    )
+
+    # 🔥 obtener asistencia
+    asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
+
+    # 🔥 SI ES FIN DE SEMANA
+    if dia in [5, 6]:
+
+        # 🟢 SEGURIDAD → flujo normal
+        if trabaja_fines:
+            pass
+
+        # 🔵 OTROS EMPLEADOS
+        else:
+            if asistencia:
+                return "TIEMPO_EXTRA"
+
+            return "NO_LABORAL"
+    
+    if not asistencia:
+        return "FALTA"
+
+    entrada = asistencia.hora_entrada
+    salida = asistencia.hora_salida
+
+    if es_tiempo_extra(empleado, fecha):
+        return "TIEMPO_EXTRA"
+
+    hora_limite_retardo = time(8, 15)
+
+    if entrada:
+
+        if entrada <= hora_limite_retardo:
+            estado = "OK"
+        else:
+            estado = "RETARDO"
+
+        if not salida:
+            estado = "INCOMPLETO"
+
+        return estado
+
+    return "FALTA"
+
+from datetime import datetime
+
+def calcular_tiempo(salida, regreso):
+
+    if not salida or not regreso:
+        return ""
+
+    t_salida = datetime.combine(datetime.today(), salida)
+    t_regreso = datetime.combine(datetime.today(), regreso)
+
+    diferencia = t_regreso - t_salida
+
+    horas = diferencia.seconds // 3600
+    minutos = (diferencia.seconds % 3600) // 60
+
+    return f"{horas:02d}:{minutos:02d}"
+
+from core.utils.asistencia import debe_generar_falta, es_tiempo_extra
+from datetime import time
+
+
+def calcular_estado_asistencia(empleado, fecha):
+
+    if not debe_generar_falta(empleado, fecha):
+        return "NO_LABORAL"
+
+    asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
+
+    if not asistencia:
+        return "FALTA"
+
+    entrada = asistencia.hora_entrada
+    salida = asistencia.hora_salida
+
+    if es_tiempo_extra(empleado, fecha):
+        return "TIEMPO_EXTRA"
+
+    hora_limite_retardo = time(8, 15)
+
+    if entrada:
+
+        if entrada <= hora_limite_retardo:
+            estado = "OK"
+        else:
+            estado = "RETARDO"
+
+        if not salida:
+            estado = "INCOMPLETO"
+
+        return estado
+
+    return "FALTA"
+
+def calcular_incidencias_asistencia(empleado, fecha):
+
+    incidencias = []
+
+    incidencias_qs = Incidencia.objects.filter(
+        empleado=empleado,
+        fecha_inicio__lte=fecha,
+        fecha_fin__gte=fecha
+    )
+
+    for i in incidencias_qs:
+        incidencias.append(i.tipo if hasattr(i, "tipo") else "INCIDENCIA")
+
+    return incidencias
 
 @solo_operativo
 def reporte_asistencia(request):
     from nucleo.models import Empleado
-    from core.utils import obtener_empresa_usuario
+    
 
 
     empresa = request.empresa
@@ -40,13 +170,8 @@ def reporte_asistencia(request):
 
     
 
-    
-
-    from core.utils import calcular_estado_asistencia
-
     registros = list(registros)  # 🔥 FORZAR evaluación
 
-    from core.utils import calcular_estado_asistencia, calcular_incidencias_asistencia
 
     for r in registros:
         r.estado = calcular_estado_asistencia(r.empleado, r.fecha)
@@ -65,7 +190,6 @@ def reporte_asistencia(request):
 
 
 def obtener_asistencias_base(request):
-    from core.utils import obtener_empresa_usuario
     from asistencia.models import Asistencia
 
     empresa = request.empresa
@@ -116,7 +240,6 @@ def reporte_permisos(request):
 
     from asistencia.models import Movimiento
     from nucleo.models import Empleado
-    from core.utils import obtener_empresa_usuario
 
     empresa = request.empresa
 
@@ -126,7 +249,8 @@ def reporte_permisos(request):
 
     # 🔹 BASE
     movimientos = Movimiento.objects.filter(
-        tipo__in=["SALIDA_PERMISO", "REGRESO"]
+        tipo__in=["SALIDA_PERMISO", "REGRESO"],
+        asistencia__empleado__empresa=request.empresa  # 🔥 CLAVE
     ).select_related("asistencia__empleado")
 
     # 🔹 FILTROS
@@ -186,47 +310,34 @@ def reporte_permisos(request):
         "fin": fin
     })
     
-
 def obtener_asistencias(empresa, inicio=None, fin=None, empleado_id=None):
 
-
     asistencias = Asistencia.objects.filter(
-        empresa=empresa
+        empleado__empresa=empresa
     ).select_related("empleado")
 
-    asistencias = Asistencia.objects.filter(
-    empresa=empresa
-)
+    # 🔹 filtros opcionales
+    if inicio:
+        asistencias = asistencias.filter(fecha__gte=inicio)
 
-    # 🔥 AQUÍ VA
-    for asistencia in asistencias:
-        asistencia.estado = calcular_estado_asistencia(r.empleado, r.fecha)
-    
+    if fin:
+        asistencias = asistencias.filter(fecha__lte=fin)
 
-    if inicio and fin:
-        registros = registros.filter(fecha__range=[inicio, fin])
-    elif inicio:
-        registros = registros.filter(fecha__gte=inicio)
-    elif fin:
-        registros = registros.filter(fecha__lte=fin)
-
-    if empleado_id and empleado_id != "0":
+    if empleado_id:
         asistencias = asistencias.filter(empleado_id=empleado_id)
-        
-        asistencias = asistencias.order_by("fecha", "empleado__numero_empleado")
 
-    for r in asistencias:
-        r.estado = calcular_estado_asistencia(
-            r.empleado,
-            r.fecha.strftime("%Y-%m-%d"),
+    # 🔥 calcular estado
+    for asistencia in asistencias:
+        asistencia.estado = calcular_estado_asistencia(
+            asistencia.empleado,
+            asistencia.fecha
         )
 
     return asistencias
+
 @solo_operativo    
 def exportar_tiempos_extra_excel(request):
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from django.http import HttpResponse
+    
 
     empresa = request.empresa
 
@@ -234,24 +345,27 @@ def exportar_tiempos_extra_excel(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    tiempos = TiempoExtra.objects.filter(
+    asistencias = Asistencia.objects.filter(
         empleado__empresa=empresa
     ).select_related("empleado")
 
+    # 🔥 FILTRO POR FECHA
     if inicio and fin:
-        tiempos = tiempos.filter(fecha__range=[inicio, fin])
+        asistencias = asistencias.filter(fecha__range=(inicio, fin))
     elif inicio:
-        tiempos = tiempos.filter(fecha__gte=inicio)
+        asistencias = asistencias.filter(fecha__gte=inicio)
     elif fin:
-        tiempos = tiempos.filter(fecha__lte=fin)
+        asistencias = asistencias.filter(fecha__lte=fin)
 
-    if empleado_id:
-        tiempos = tiempos.filter(empleado_id=empleado_id)
+# 🔥 FILTRO POR EMPLEADO
+    if empleado_id and empleado_id != "0":
+        asistencias = asistencias.filter(empleado_id=empleado_id)
 
-    tiempos = tiempos.order_by("empleado__nombre", "fecha")
+    # 🔥 ORDEN
+    asistencias = asistencias.order_by("empleado__nombre", "fecha")
 
-    # 🔥 EXCEL PRO
-    wb = openpyxl.Workbook()
+        # 🔥 EXCEL PRO
+    wb = Workbook()
     ws = wb.active
     ws.title = "Tiempos Extra"
 
@@ -289,28 +403,42 @@ def exportar_tiempos_extra_excel(request):
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
 
+    from core.services.asistencia_service import obtener_tiempo_extra
+
     # 🔹 DATOS
     fila = 6
     total_horas = 0
 
-    for t in tiempos:
-        horas = t.calcular_horas()
-        total_horas += horas
+    asistencias = Asistencia.objects.filter(
+        empleado__empresa=empresa
+    ).select_related("empleado")
 
-        ws.cell(row=fila, column=1, value=t.empleado.numero_empleado)
-        ws.cell(row=fila, column=2, value=t.empleado.nombre)
-        ws.cell(row=fila, column=3, value=t.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=fila, column=4, value=t.hora_inicio.strftime("%H:%M") if t.hora_inicio else "")
-        ws.cell(row=fila, column=5, value=t.hora_fin.strftime("%H:%M") if t.hora_fin else "")
-        ws.cell(row=fila, column=6, value=horas)
+    for a in asistencias:
 
-        fila += 1
+        info = obtener_tiempo_extra(a)
 
-    # 🔹 TOTAL
+        if info:
+
+            ws.cell(row=fila, column=1, value=a.empleado.numero_empleado)
+            ws.cell(row=fila, column=2, value=a.empleado.nombre)
+            ws.cell(row=fila, column=3, value=a.fecha)
+            ws.cell(row=fila, column=4, value=info["inicio"])
+            ws.cell(row=fila, column=5, value=info["fin"])
+            ws.cell(row=fila, column=6, value=info["horas"])
+
+            # 🔥 sumar solo si es número
+            if isinstance(info["horas"], int):
+                total_horas += info["horas"]
+
+            fila += 1
+
+
+    # 🔹 TOTAL (FUERA DEL FOR)
     ws.cell(row=fila + 1, column=5, value="TOTAL GENERAL").font = Font(bold=True)
     ws.cell(row=fila + 1, column=6, value=total_horas).font = Font(bold=True)
 
-    # 🔹 AUTO ANCHO
+
+# 🔹 AUTO ANCHO
     for column in ws.columns:
         max_length = 0
         col_letter = column[0].column_letter
@@ -321,9 +449,12 @@ def exportar_tiempos_extra_excel(request):
 
         ws.column_dimensions[col_letter].width = max_length + 2
 
+
     # 🔹 FREEZE
     ws.freeze_panes = "A6"
 
+
+    # 🔹 BORDES
     from openpyxl.styles import Border, Side
 
     thin = Side(style="thin")
@@ -337,7 +468,8 @@ def exportar_tiempos_extra_excel(request):
                 bottom=thin
             )
 
-    # 🔹 RESPONSE
+
+    # 🔹 RESPONSE (FUERA DE TODO)
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -347,12 +479,9 @@ def exportar_tiempos_extra_excel(request):
     return response
 
 
-
 @solo_operativo
 def exportar_movimientos_excel(request):
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from django.http import HttpResponse
+    
 
     # 🔹 empresa
     empresa = request.empresa
@@ -393,7 +522,7 @@ def exportar_movimientos_excel(request):
     movimientos = movimientos.order_by("fecha", "hora")
 
     # 🔥 EXCEL PRO
-    wb = openpyxl.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Movimientos"
 
@@ -483,7 +612,7 @@ def reporte_excel(request):
     import csv
     from django.http import HttpResponse
     from datetime import datetime
-    from core.utils import calcular_estado_asistencia, calcular_incidencias_asistencia
+    
 
     registros = obtener_asistencias_base(request)
     registros = aplicar_filtros_asistencia(request, registros)
@@ -521,15 +650,14 @@ def reporte_excel(request):
             estado,
             " | ".join(incidencias) if incidencias else "OK"
         ])
-
     return response
 
 @solo_operativo
 def reporte_excel_xlsx(request):
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from django.http import HttpResponse
-    from core.utils import calcular_estado_asistencia, calcular_incidencias_asistencia
+
+    from openpyxl.styles import Alignment  # 🔥 FORZAR CONTEXTO
+    
+    
 
     empresa = request.empresa
 
@@ -540,7 +668,7 @@ def reporte_excel_xlsx(request):
     registros = aplicar_filtros_asistencia(request, registros)
     registros = registros.order_by("empleado__numero_empleado", "-fecha")
 
-    wb = openpyxl.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Asistencia"
 
@@ -667,28 +795,19 @@ def reporte_excel_xlsx(request):
     
 
    
-def obtener_tiempos_extra(empresa, inicio=None, fin=None, empleado_id=None):
-
-    tiempos = TiempoExtra.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
-
-    if inicio and fin:
-        tiempos = tiempos.filter(fecha__range=[inicio, fin])
-
-    elif inicio:
-        tiempos = tiempos.filter(fecha__gte=inicio)
-
-    elif fin:
-        tiempos = tiempos.filter(fecha__lte=fin)
-
-    if empleado_id and empleado_id != "0":
-        tiempos = tiempos.filter(empleado_id=empleado_id)
-
-    return tiempos.order_by("fecha", "empleado__numero_empleado")
-
 @solo_operativo
 def reporte_tiempos_extra(request):
+    
+
+    from asistencia.models import Asistencia, Movimiento
+    from nucleo.models import Empleado
+    from datetime import datetime
+    from asistencia.models import Movimiento
+
+    print("TOTAL MOVIMIENTOS:", Movimiento.objects.count())
+
+    for m in Movimiento.objects.all()[:10]:
+        print("MOV:", m.id, m.tipo, m.hora, m.asistencia_id)
 
     empresa = request.empresa
 
@@ -696,51 +815,97 @@ def reporte_tiempos_extra(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    # 🔴 SIEMPRE definir primero
-    tiempos = TiempoExtra.objects.filter(
+    asistencias = Asistencia.objects.filter(
         empleado__empresa=empresa
     ).select_related("empleado")
 
     # 🔹 filtros
     if inicio and fin:
-        tiempos = tiempos.filter(fecha__range=[inicio, fin])
-
+        asistencias = asistencias.filter(fecha__range=[inicio, fin])
     elif inicio:
-        tiempos = tiempos.filter(fecha__gte=inicio)
-
+        asistencias = asistencias.filter(fecha__gte=inicio)
     elif fin:
-        tiempos = tiempos.filter(fecha__lte=fin)
+        asistencias = asistencias.filter(fecha__lte=fin)
 
     if empleado_id and empleado_id != "":
-        tiempos = tiempos.filter(empleado_id=empleado_id)
+        asistencias = asistencias.filter(empleado_id=empleado_id)
 
-    # 🔹 orden
-    tiempos = tiempos.order_by("empleado__nombre", "fecha")
+    asistencias = asistencias.order_by("empleado__nombre", "fecha")
 
-    # 🔹 total horas
-    total_horas = sum([t.calcular_horas() for t in tiempos])
+    resultados = []
+    total_horas = 0
 
+    for a in asistencias:
+
+        movimientos = Movimiento.objects.filter(
+            asistencia__empleado=a.empleado,
+            asistencia__fecha=a.fecha
+        ).order_by("hora")
+
+        inicio_extra = None
+        fin_extra = None
+
+        for m in movimientos:
+            if m.tipo == "INICIO_TIEMPO_EXTRA":
+                inicio_extra = m.hora
+            elif m.tipo == "FIN_TIEMPO_EXTRA":
+                fin_extra = m.hora
+
+        if inicio_extra:
+
+            if fin_extra:
+                # 🔥 calcular minutos totales
+                t_inicio = datetime.combine(a.fecha, inicio_extra)
+                t_fin = datetime.combine(a.fecha, fin_extra)
+
+                diff = t_fin - t_inicio
+
+                total_minutos = int(diff.total_seconds() / 60)
+
+                horas_base = total_minutos // 60
+                minutos = total_minutos % 60
+
+                # 🔥 REGLA DE NEGOCIO
+                if minutos >= 45:
+                    horas_final = horas_base + 1
+                else:
+                    horas_final = horas_base
+
+                total_horas += horas_final
+
+                resultados.append({
+                    "empleado": a.empleado,
+                    "fecha": a.fecha,
+                    "hora_inicio": inicio_extra,
+                    "hora_fin": fin_extra,
+                    "horas": horas_final   # 🔥 SOLO ENTERO
+                })
+
+            else:
+                # 🔥 EN CURSO
+                resultados.append({
+                    "empleado": a.empleado,
+                    "fecha": a.fecha,
+                    "hora_inicio": inicio_extra,
+                    "hora_fin": None,
+                    "horas": "EN CURSO"
+                })
+                
     empleados = Empleado.objects.filter(
         empresa=empresa,
         activo=True
     )
 
     context = {
-        "tiempos": tiempos,
+        "tiempos": resultados,
         "empleados": empleados,
         "inicio": inicio,
         "fin": fin,
         "empleado_id": empleado_id,
-        "total_horas": total_horas
+        "total_horas": round(total_horas, 2)
     }
 
     return render(request, "reportes/tiempo_extra.html", context)
-
-
-from asistencia.models import Movimiento
-
-
-from django.shortcuts import render
 
 @solo_operativo
 def reporte_movimientos(request):
@@ -848,9 +1013,7 @@ def index(request):
    
 @solo_operativo    
 def exportar_incidencias_excel_xlsx(request):
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from django.http import HttpResponse
+    
 
     empresa = request.empresa
 
@@ -870,7 +1033,7 @@ def exportar_incidencias_excel_xlsx(request):
             fecha_inicio__range=[inicio, fin]
         )
 
-    wb = openpyxl.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Incidencias"
 
@@ -955,9 +1118,7 @@ def exportar_incidencias_excel_xlsx(request):
 
 @solo_operativo
 def exportar_permisos_excel(request):
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
-    from django.http import HttpResponse
+    
     from asistencia.models import Movimiento
 
     empresa = request.empresa
@@ -1016,7 +1177,7 @@ def exportar_permisos_excel(request):
             del control[key]
 
     # 🔥 EXCEL PRO
-    wb = openpyxl.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Permisos"
 
@@ -1097,6 +1258,158 @@ def exportar_permisos_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = "attachment; filename=permisos.xlsx"
+
+    wb.save(response)
+    return response
+
+from core.services.asistencia_service import obtener_tiempo_extra
+
+def reporte_nomina(request):
+
+    empresa = request.empresa
+
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
+
+    asistencias = Asistencia.objects.filter(
+        empleado__empresa=empresa
+    ).select_related("empleado")
+
+    if inicio and fin:
+        asistencias = asistencias.filter(fecha__range=(inicio, fin))
+    elif inicio:
+        asistencias = asistencias.filter(fecha__gte=inicio)
+    elif fin:
+        asistencias = asistencias.filter(fecha__lte=fin)
+
+    empleados = {}
+    total_general = 0  # 🔥 SIEMPRE DEFINIDO
+
+    for a in asistencias:
+        emp = a.empleado
+
+        if emp.id not in empleados:
+            empleados[emp.id] = {
+                "empleado": emp,
+                "horas": 0,
+                "pago": 0
+            }
+
+        info = obtener_tiempo_extra(a)  # 🔥 ESTA LÍNEA FALTABA
+
+        horas = 0
+
+        if info:
+            horas = float(info.get("horas", 0))
+
+        pago = horas * float(emp.costo_hora or 0) * 2
+
+        empleados[emp.id]["horas"] += horas
+        empleados[emp.id]["pago"] += pago
+        
+        
+
+    # 🔥 SIEMPRE SE EJECUTA (aunque no haya datos)
+    total_general = sum(e["pago"] for e in empleados.values()) if empleados else 0
+    context = {
+        "empleados": empleados.values(),
+        "inicio": inicio,
+        "fin": fin,
+        "total_general": total_general
+}
+    return render(request, "reportes/nomina.html", context)
+
+    from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+
+from core.services.asistencia_service import obtener_tiempo_extra
+
+
+def exportar_nomina_excel(request):
+
+    empresa = request.empresa
+
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
+
+    asistencias = Asistencia.objects.filter(
+        empleado__empresa=empresa
+    ).select_related("empleado")
+
+    if inicio and fin:
+        asistencias = asistencias.filter(fecha__range=(inicio, fin))
+
+    empleados = {}
+
+    for a in asistencias:
+        emp = a.empleado
+
+        if emp.id not in empleados:
+            empleados[emp.id] = {
+                "empleado": emp,
+                "horas": 0,
+                "pago": 0
+            }
+
+        info = obtener_tiempo_extra(a)
+
+        if info and isinstance(info["horas"], int):
+            horas = info["horas"]
+            pago = horas * float(emp.costo_hora) * 2
+
+            empleados[emp.id]["horas"] += horas
+            empleados[emp.id]["pago"] += pago
+
+    # 🔥 CREAR EXCEL
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Nómina"
+
+    # 🔹 ENCABEZADOS
+    encabezados = ["No. Empleado", "Empleado", "Horas", "Costo Hora", "Pago"]
+
+    for col, valor in enumerate(encabezados, 1):
+        cell = ws.cell(row=1, column=col, value=valor)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+
+    fila = 2
+    total_general = 0
+
+    for e in empleados.values():
+
+        if e["horas"] > 0:
+
+            ws.cell(row=fila, column=1, value=e["empleado"].numero_empleado)
+            ws.cell(row=fila, column=2, value=e["empleado"].nombre)
+            ws.cell(row=fila, column=3, value=e["horas"])
+            ws.cell(row=fila, column=4, value=float(e["empleado"].costo_hora))
+            ws.cell(row=fila, column=5, value=e["pago"])
+
+            total_general += e["pago"]
+            fila += 1
+
+    # 🔹 TOTAL
+    ws.cell(row=fila + 1, column=4, value="TOTAL").font = Font(bold=True)
+    ws.cell(row=fila + 1, column=5, value=total_general).font = Font(bold=True)
+
+    # 🔹 AUTO AJUSTE
+    for column in ws.columns:
+        max_length = 0
+        col_letter = column[0].column_letter
+
+        for cell in column:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    # 🔹 RESPONSE
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=nomina.xlsx"
 
     wb.save(response)
     return response

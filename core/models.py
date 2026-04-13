@@ -30,7 +30,7 @@ class Incidencia(models.Model):
     )
 
     empleado = models.ForeignKey("nucleo.Empleado", on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=30)
+    tipo = models.CharField(max_length=100)
 
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
@@ -42,7 +42,7 @@ class IncidenciaDia(models.Model):
 
     empleado = models.ForeignKey("nucleo.Empleado", on_delete=models.CASCADE)
     fecha = models.DateField()
-    tipo = models.CharField(max_length=30)
+    tipo = models.CharField(max_length=100)
 
     incidencia = models.ForeignKey(
         Incidencia,

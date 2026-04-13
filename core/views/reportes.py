@@ -2,7 +2,6 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.shortcuts import render
 
-from core.utils import obtener_empresa_usuario, calcular_estado_asistencia
 from nucleo.models import Empleado
 from asistencia.models import Asistencia, TiempoExtra
 from core.models import IncidenciaDia

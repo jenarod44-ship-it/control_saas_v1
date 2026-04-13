@@ -1,35 +1,54 @@
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-def calcular_horas_extra_por_dia(tiempos_extra_dia):
-    total_minutos = 0
-
-    for t in tiempos_extra_dia:
-        if t.hora_fin:
-            inicio = datetime.combine(t.fecha, t.hora_inicio)
-            fin = datetime.combine(t.fecha, t.hora_fin)
-            diferencia = fin - inicio
-            total_minutos += int(diferencia.total_seconds() / 60)
-
-    horas = total_minutos // 60
-    minutos_restantes = total_minutos % 60
-
-    if minutos_restantes >= 30:
-        horas += 1
-
-    return horas
+from collections import defaultdict
+from datetime import datetime
+from asistencia.models import Movimiento
 
 
+def calcular_horas_extra_por_dia(asistencia):
 
-def calcular_horas_extra_por_rango(queryset):
-    por_dia = defaultdict(list)
+    movimientos = Movimiento.objects.filter(
+        asistencia=asistencia
+    ).order_by("hora")
 
-    for t in queryset:
-        por_dia[t.fecha].append(t)
+    inicio = None
+    fin = None
 
-    total_horas = 0
+    for m in movimientos:
+        if m.tipo == "INICIO_TIEMPO_EXTRA":
+            inicio = m.hora
+        elif m.tipo == "FIN_TIEMPO_EXTRA":
+            fin = m.hora
 
-    for fecha, tiempos in por_dia.items():
-        total_horas += calcular_horas_extra_por_dia(tiempos)
+    if not inicio or not fin:
+        return 0
 
-    return total_horas
+    t_inicio = datetime.combine(asistencia.fecha, inicio)
+    t_fin = datetime.combine(asistencia.fecha, fin)
+
+    diff = t_fin - t_inicio
+
+    total_minutos = int(diff.total_seconds() / 60)
+
+    horas_base = total_minutos // 60
+    minutos = total_minutos % 60
+
+    # 🔥 REGLA DE NEGOCIO (45 min)
+    if minutos >= 45:
+        horas_final = horas_base + 1
+    else:
+        horas_final = horas_base
+
+    return horas_final
+
+
+
+def calcular_horas_extra_por_rango(asistencias):
+
+    total = 0
+
+    for a in asistencias:
+        total += calcular_horas_extra_por_dia(a)
+
+    return total

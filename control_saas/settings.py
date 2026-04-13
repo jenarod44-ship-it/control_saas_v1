@@ -15,12 +15,15 @@ SECRET_KEY = "dev-key"
 DEBUG = True
 
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_SSL_REDIRECT = False  # Cambiar a True en VPS
+SESSION_COOKIE_AGE = 1209600  # 2 semanas
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+LOGIN_REDIRECT_URL = 'panel_control'
 
 
 
@@ -37,6 +40,9 @@ SECURE_SSL_REDIRECT = False  # Cambiar a True en VPS
 
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
 
 
 
@@ -69,10 +75,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 
     'core.middleware.EmpresaMiddleware',
    
-    'saas.middleware.EmpresaMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'control_saas.urls'
@@ -106,13 +113,18 @@ os.environ["LANG"] = "en_US.UTF-8"
 os.environ["LC_ALL"] = "en_US.UTF-8"
 
 
-
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'control_saas',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
+
 
 
 
@@ -162,6 +174,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+DEBUG = False
+
+ALLOWED_HOSTS = ["*"]  # luego lo restringimos
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATIC_URL = '/static/'
 
 
 

@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from core.views.empresa import cambiar_empresa
 
+
 app_name = "core"
 
 urlpatterns = [
@@ -15,4 +16,7 @@ urlpatterns = [
         cambiar_empresa,
         name="cambiar_empresa"
     ),
+    
+    path('cambiar-empresa/<int:empresa_id>/', views.cambiar_empresa, name='cambiar_empresa'),
+
 ]

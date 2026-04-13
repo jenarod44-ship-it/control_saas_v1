@@ -99,7 +99,7 @@
                 <a href="{% url 'reportes:movimientos' %}" class="btn btn-outline-info">🔄 Movimientos</a>
                 <a href="{% url 'reportes:tiempos_extra' %}" class="btn btn-outline-success">⏱ Tiempo extra</a>
                 <a href="{% url 'reportes:permisos' %}" class="btn btn-outline-dark">📋 Permisos</a>
-
+                
             </div>
 
         </div>
@@ -116,6 +116,9 @@
                 <a href="{% url 'core:estado_dia' %}" class="btn btn-success">📅 Estado del día</a>
                 <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-warning">⚠️ Incidencias</a>
                 <a href="/admin/nucleo/empleado/" class="btn btn-dark">👥 Empleados</a>
+                <a href="{% url 'reportes:reporte_nomina' %}" class="btn btn-success">
+                    💰 Nómina
+                </a>
 
             </div>
 

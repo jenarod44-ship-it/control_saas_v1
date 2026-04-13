@@ -1,49 +1,43 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.http import HttpResponse
-
 from datetime import datetime
 import csv
 from collections import defaultdict
-
-from asistencia.models import Asistencia, TiempoExtra
-from asistencia.utils import calcular_horas_extra_por_rango, calcular_horas_extra_por_dia
 from core.models import Incidencia
-from core.utils import obtener_empresa_usuario
 from core.decorators import solo_operativo, solo_admin
 
 
+
 @login_required
-def obtener_tiempos_extra(empresa, inicio=None, fin=None, empleado_id=None):
-
-    tiempos = TiempoExtra.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
-
-    if inicio and fin:
-        tiempos = tiempos.filter(fecha__range=[inicio, fin])
-
-    if empleado_id and empleado_id != "0":
-        tiempos = tiempos.filter(empleado_id=empleado_id)
-
-    return tiempos.order_by("fecha")
 def exportar_tiempos_extra_csv(request):
 
-    tiempos = obtener_tiempos_extra(
-        empresa=request.empresa,
-        inicio=request.GET.get("inicio"),
-        fin=request.GET.get("fin"),
-        empleado_id=request.GET.get("empleado")
-    )
-
-    from collections import defaultdict
-    import csv
+    from asistencia.models import Asistencia, Movimiento
     from django.http import HttpResponse
+    import csv
 
-    por_empleado_dia = defaultdict(list)
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
+    empleado_id = request.GET.get("empleado")
 
-    for t in tiempos:
-        por_empleado_dia[(t.empleado.nombre, t.fecha)].append(t)
+    asistencias = Asistencia.objects.filter(
+        empleado__empresa=request.empresa
+    ).select_related("empleado")
+
+    # 🔥 FILTRO POR FECHA (CORRECTO)
+    if inicio and fin:
+        asistencias = asistencias.filter(fecha__range=[inicio, fin])
+    elif inicio:
+        asistencias = asistencias.filter(fecha__gte=inicio)
+    elif fin:
+        asistencias = asistencias.filter(fecha__lte=fin)
+
+    # 🔥 FILTRO POR EMPLEADO
+    if empleado_id and empleado_id != "0":
+        asistencias = asistencias.filter(empleado_id=empleado_id)
+
+    # 🔥 ORDEN (IMPORTANTE)
+    asistencias = asistencias.order_by("empleado__nombre", "fecha")
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="reporte_horas_extra.csv"'
@@ -53,30 +47,74 @@ def exportar_tiempos_extra_csv(request):
 
     total_general = 0
 
-    for (empleado, fecha), lista in por_empleado_dia.items():
-        horas = calcular_horas_extra_por_dia(lista)
-        total_general += horas
-        writer.writerow([fecha, empleado, horas])
+    for a in asistencias:
 
-    writer.writerow([])
-    writer.writerow(["", "TOTAL GENERAL", total_general])
+        movimientos = Movimiento.objects.filter(
+            asistencia=a
+        ).order_by("hora")
+
+        inicio_extra = None
+        fin_extra = None
+
+        for m in movimientos:
+            if m.tipo == "INICIO_TIEMPO_EXTRA":
+                inicio_extra = m.hora
+            elif m.tipo == "FIN_TIEMPO_EXTRA":
+                fin_extra = m.hora
+
+        if inicio_extra:
+
+            if fin_extra:
+                t_inicio = datetime.combine(a.fecha, inicio_extra)
+                t_fin = datetime.combine(a.fecha, fin_extra)
+
+                diff = t_fin - t_inicio
+
+                total_minutos = int(diff.total_seconds() / 60)
+
+                horas_base = total_minutos // 60
+                minutos = total_minutos % 60
+
+                # 🔥 REGLA DE NEGOCIO
+                if minutos >= 45:
+                    horas_final = horas_base + 1
+                else:
+                    horas_final = horas_base
+
+                total_general += horas_final
+
+                writer.writerow([
+                    a.fecha,
+                    a.empleado.nombre,
+                    horas_final
+                ])
+
+            else:
+                # 🔥 EN CURSO
+                writer.writerow([
+                    a.fecha,
+                    a.empleado.nombre,
+                    "EN CURSO"
+                ])
+    
 
     return response
-
 
 @login_required
 def lista_movimientos(request):
 
-    empresa = obtener_empresa_usuario(request)
+    empresa = request.empresa
 
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
 
-    asistencias = Asistencia.objects.filter(empresa=empresa)
-    incidencias = Incidencia.objects.filter(empleado__empresa=empresa)
-    tiempos_extra = TiempoExtra.objects.filter(asistencia_empresa=empresa)
-    empresa = models.ForeignKey("core.Empresa", on_delete=models.CASCADE)
+    asistencias = Asistencia.objects.filter(
+        empleado__empresa=empresa
+    ).select_related("empleado")
 
+    incidencias = Incidencia.objects.filter(
+        empleado__empresa=empresa
+    )
     total_horas_extra = 0
 
     if inicio and fecha_fin:
@@ -92,20 +130,21 @@ def lista_movimientos(request):
             fecha_inicio__range=(fecha_inicio_obj, fecha_fin_obj)
         )
 
-        tiempos = TiempoExtra.objects.filter(
-            asistencia__empresa=empresa,
-            fecha__range=(inicio, fin)
-        )
+        asistencias = Asistencia.objects.filter(
+            empleado__empresa=empresa
+        ).select_related("empleado")
+
+        if inicio and fin:
+            asistencias = asistencias.filter(fecha__range=(inicio, fin))
+        elif inicio:
+            asistencias = asistencias.filter(fecha__gte=inicio)
+        elif fin:
+            asistencias = asistencias.filter(fecha__lte=fin)
         
 
-        total_horas_extra = calcular_horas_extra_por_rango(tiempos_extra)
+        total_horas_extra = calcular_horas_extra_por_rango(asistencias)
 
-        movimientos = obtener_movimientos(
-        empresa,
-        inicio,
-        fin,
-        empleado_id
-    )
+        
 
     for a in asistencias:
         movimientos.append({

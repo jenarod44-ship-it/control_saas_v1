@@ -30,7 +30,14 @@ from datetime import datetime, timedelta
 from asistencia.models import Movimiento
 
 
+from core.utils.asistencia import debe_generar_falta, es_tiempo_extra
+from datetime import datetime, timedelta
+
 def calcular_estado_asistencia(empleado, fecha):
+
+    # 🔥 validar si es día laboral
+    if not debe_generar_falta(empleado, fecha):
+        return "NO_LABORAL"
 
     asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
 
@@ -50,6 +57,10 @@ def calcular_estado_asistencia(empleado, fecha):
     tiene_salida_permiso = movimientos.filter(tipo="SALIDA_PERMISO").exists()
     tiene_regreso = movimientos.filter(tipo="REGRESO").exists()
     tiene_tiempo_extra = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").exists()
+
+    # 🔥 NUEVO: tiempo extra por día
+    if es_tiempo_extra(empleado, fecha):
+        return "TIEMPO_EXTRA"
 
     if not asistencia.hora_salida:
 
@@ -71,33 +82,7 @@ def calcular_estado_asistencia(empleado, fecha):
     else:
         return "RETARDO"
 
-from datetime import datetime
-
-def calcular_tiempo(salida, regreso):
-
-    if not salida or not regreso:
-        return ""
-
-    t_salida = datetime.combine(datetime.today(), salida)
-    t_regreso = datetime.combine(datetime.today(), regreso)
-
-    diferencia = t_regreso - t_salida
-
-    horas = diferencia.seconds // 3600
-    minutos = (diferencia.seconds % 3600) // 60
-
-    return f"{horas:02d}:{minutos:02d}"
-
     
-
-def obtener_empresa_usuario(user):
-    if hasattr(user, "perfil_core"):
-        return user.perfil_core.empresa
-    return None
-
-app_name = "core"
-
-from core.models import Empresa, EmpresaUsuario
 
 def obtener_empresa_actual(request):
     empresa_id = request.session.get("empresa_id")
@@ -119,31 +104,3 @@ def empleado_trabaja(empleado, fecha):
 
     return str(dia) in dias
 
-def obtener_empresa_usuario(request):
-    user = request.user
-
-    empresa_id = request.session.get("empresa_id")
-
-    print("SESSION EMPRESA_ID:", empresa_id)   # 👈 AGREGAR
-
-    if empresa_id:
-        relacion = EmpresaUsuario.objects.filter(
-            usuario=user,
-            empresa_id=empresa_id
-        ).select_related("empresa").first()
-
-        print("RELACION ENCONTRADA:", relacion)  # 👈 AGREGAR
-
-        if relacion:
-            return relacion.empresa
-
-    relacion = EmpresaUsuario.objects.filter(
-        usuario=user
-    ).select_related("empresa").first()
-
-    print("FALLBACK RELACION:", relacion)  # 👈 AGREGAR
-
-    if relacion:
-        return relacion.empresa
-
-    return None

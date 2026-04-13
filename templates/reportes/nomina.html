@@ -1,0 +1,42 @@
+<h2>💰 Reporte de Nómina (Tiempo Extra)</h2>
+
+<a href="{% url 'reportes:exportar_nomina_excel' %}" class="btn btn-success mb-3">
+    📥 Descargar Excel
+</a>
+
+<a href="{% url 'core:dashboard' %}" class="btn btn-secondary mb-3">
+    ⬅️ Volver al panel
+</a>
+
+<table border="1" class="table table-striped">
+    <thead>
+        <tr>
+            <th>No. Empleado</th>
+            <th>Empleado</th>
+            <th>Horas Extra</th>
+            <th>Costo Hora</th>
+            <th>Pago</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for e in empleados %}
+            {% if e.horas > 0 %}
+            <tr>
+                <td>{{ e.empleado.numero_empleado }}</td>
+                <td>{{ e.empleado.nombre }}</td>
+                <td>{{ e.horas }}</td>
+                <td>${{ e.empleado.costo_hora|floatformat:2 }}</td>
+                <td>${{ e.pago|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+    </tbody>
+
+    <tfoot>
+        <tr>
+            <td colspan="3"><strong>TOTAL GENERAL</strong></td>
+            <td><strong>${{ total_general|floatformat:2 }}</strong></td>
+        </tr>
+    </tfoot>
+</table>

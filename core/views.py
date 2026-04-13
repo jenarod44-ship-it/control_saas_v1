@@ -8,6 +8,12 @@ from core.forms import CompanyForm
 from core.utils import create_company
 from core.forms import CompanyForm
 from core.decorators import solo_operativo, solo_admin
+from django.shortcuts import redirect
+
+
+def cambiar_empresa(request, empresa_id):
+    request.session['empresa_id'] = empresa_id
+    return redirect('dashboard')  # ajusta si tu url es otra
 
 
 # Python
@@ -16,7 +22,6 @@ from datetime import timedelta, time
 
 # Core
 from core.models import Perfil
-from core.utils import obtener_empresa_usuario, calcular_estado_asistencia
 from core.services.company_service import create_company
 from core.services.incidencias import generar_incidencias_por_rango
 
@@ -47,7 +52,7 @@ def create_company_view(request):
 @login_required
 def crear_empleado(request):
 
-    empresa = obtener_empresa_usuario(request)
+    empresa = request.empresa
 
     if request.method == "POST":
 
@@ -87,7 +92,7 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def crear_incidencia(request):
 
-    empresa = obtener_empresa_usuario(request)
+    empresa = request.empresa
 
     empleados = Empleado.objects.filter(
         empresa=empresa,

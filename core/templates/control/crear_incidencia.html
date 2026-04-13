@@ -1,7 +1,7 @@
 @login_required
 def crear_incidencia(request):
 
-    empresa = obtener_empresa_usuario(request)
+    empresa = request.empresa
 
     empleados = Empleado.objects.filter(
         empresa=empresa,

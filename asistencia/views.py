@@ -70,6 +70,9 @@ def permisos(request):
 @solo_operativo
 def tiempo_extra(request):
 
+    from asistencia.models import Movimiento
+    from django.utils import timezone
+
     mensaje = None
 
     if request.method == "POST":
@@ -91,37 +94,41 @@ def tiempo_extra(request):
 
         hoy = timezone.localdate()
 
-        registro = TiempoExtra.objects.filter(
-            empleado=empleado,
-            fecha=hoy
-        ).first()
-
-
-        hoy = timezone.localdate()
-
         asistencia = Asistencia.objects.filter(
             empleado=empleado,
             fecha=hoy
         ).first()
 
-        if not registro:
-            hora_actual = timezone.localtime().time()
-
-            TiempoExtra.objects.create(
-                empleado=empleado,
-                asistencia=asistencia,
-                fecha=hoy,
-                hora_inicio=hora_actual
-            )
-        if not asistencia:
+        # 🔥 VALIDAR ENTRADA
+        if not asistencia or not asistencia.hora_entrada:
             mensaje = "Debe registrar entrada primero"
-            return redirect("checador")  # o donde quieras        
-            
+            return render(request, "asistencia/tiempo_extra.html", {"mensaje": mensaje})
+
+        movimientos = Movimiento.objects.filter(asistencia=asistencia)
+
+        tiene_inicio = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").exists()
+        tiene_fin = movimientos.filter(tipo="FIN_TIEMPO_EXTRA").exists()
+
+        hora_actual = timezone.localtime().time()
+
+        # 🔹 INICIO
+        if not tiene_inicio:
+            Movimiento.objects.create(
+                asistencia=asistencia,
+                tipo="INICIO_TIEMPO_EXTRA",
+                hora=hora_actual,
+                fecha=hoy
+            )
+            mensaje = f"{empleado.nombre} - Inicio de tiempo extra"
 
         # 🔹 FIN
-        elif registro and not registro.hora_fin:
-            registro.hora_fin = timezone.localtime().time()
-            registro.save()
+        elif tiene_inicio and not tiene_fin:
+            Movimiento.objects.create(
+                asistencia=asistencia,
+                tipo="FIN_TIEMPO_EXTRA",
+                hora=hora_actual,
+                fecha=hoy
+            )
             mensaje = f"{empleado.nombre} - Fin de tiempo extra"
 
         # 🔹 YA TERMINADO
