@@ -4,9 +4,14 @@ from django.contrib.auth.models import User
 
 
 class Empresa(models.Model):
-    nombre = models.CharField(max_length=150)
-    subdominio = models.CharField(max_length=50, unique=True)
-    activa = models.BooleanField(default=True)
+    nombre = models.CharField("Nombre comercial", max_length=150)
+    razon_social = models.CharField("Razón social", max_length=200, blank=True)
+    rfc = models.CharField("RFC", max_length=20, blank=True)
+
+    subdominio = models.CharField("Subdominio", max_length=50, unique=True)
+    activa = models.BooleanField("Empresa activa", default=True)
+
+    fecha_alta = models.DateTimeField("Fecha de alta", auto_now_add=True)
 
     def __str__(self):
         return self.nombre

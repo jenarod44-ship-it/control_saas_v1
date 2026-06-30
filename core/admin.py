@@ -11,9 +11,55 @@ from core.models import EmpresaUsuario
 # ========================
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre")
-    search_fields = ("nombre",)
+    list_display = (
+        "id",
+        "nombre",
+        "razon_social",
+        "rfc",
+        "subdominio",
+        "activa",
+        "fecha_alta",
+    )
 
+    search_fields = (
+        "nombre",
+        "razon_social",
+        "rfc",
+        "subdominio",
+    )
+
+    list_filter = (
+        "activa",
+    )
+
+    ordering = (
+        "nombre",
+    )
+
+    readonly_fields = (
+        "fecha_alta",
+    )
+
+    fieldsets = (
+        ("Datos generales", {
+            "fields": (
+                "nombre",
+                "razon_social",
+                "rfc",
+            )
+        }),
+        ("Configuración SaaS", {
+            "fields": (
+                "subdominio",
+                "activa",
+            )
+        }),
+        ("Auditoría", {
+            "fields": (
+                "fecha_alta",
+            )
+        }),
+    )
 
 # ========================
 # PERFIL
@@ -81,6 +127,8 @@ class UserAdmin(BaseUserAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
+
+admin.site.enable_nav_sidebar = False
 
 
 
