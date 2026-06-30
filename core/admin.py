@@ -30,10 +30,9 @@ class PerfilAdmin(admin.ModelAdmin):
 # ========================
 @admin.register(EmpresaUsuario)
 class EmpresaUsuarioAdmin(admin.ModelAdmin):
-    list_display = ("user", "empresa")
-    search_fields = ("user__username",)
+    list_display = ("usuario", "empresa")
+    search_fields = ("usuario__username",)
     list_filter = ("empresa",)
-
 
 # ========================
 # TURNO
@@ -50,10 +49,23 @@ class TurnoAdmin(admin.ModelAdmin):
 # ========================
 @admin.register(Incidencia)
 class IncidenciaAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "empresa")
-    search_fields = ("nombre",)
-    list_filter = ("empresa",)
+    list_display = (
+        "id",
+        "empleado",
+        "tipo",
+        "turno",
+        "fecha_inicio",
+        "fecha_fin",
+    )
 
+    search_fields = (
+        "tipo",
+    )
+
+    list_filter = (
+        "tipo",
+        "fecha_inicio",
+    )
 
 # ========================
 # USER + PERFIL INLINE
