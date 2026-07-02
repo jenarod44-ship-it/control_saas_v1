@@ -6,14 +6,25 @@ from .managers import EmpresaManager
 class Departamento(models.Model):
 
     empresa = models.ForeignKey("core.Empresa", on_delete=models.CASCADE)
+
     nombre = models.CharField(max_length=100)
+
     activo = models.BooleanField(default=True)
 
-    objects = EmpresaManager()   # 👈 FALTA ESTO
+    trabaja_fines_semana = models.BooleanField(
+        "Trabaja fines de semana",
+        default=False
+    )
+
+    objects = EmpresaManager()
 
     def __str__(self):
         return self.nombre
 
+    class Meta:
+        verbose_name = "Departamento"
+        verbose_name_plural = "Departamentos"
+        ordering = ("nombre",)
 
 
 class Empleado(models.Model):

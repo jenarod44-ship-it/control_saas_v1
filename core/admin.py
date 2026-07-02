@@ -99,9 +99,29 @@ class EmpresaUsuarioAdmin(admin.ModelAdmin):
 # ========================
 @admin.register(Turno)
 class TurnoAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "empresa")
-    search_fields = ("nombre",)
-    list_filter = ("empresa",)
+    list_display = (
+        "empresa",
+        "nombre",
+        "hora_entrada",
+        "hora_salida",
+        "tolerancia_minutos",
+        "activo",
+    )
+
+    search_fields = (
+        "nombre",
+        "empresa__nombre",
+    )
+
+    list_filter = (
+        "empresa",
+        "activo",
+    )
+
+    ordering = (
+        "empresa__nombre",
+        "nombre",
+    )
 
 
 # ========================

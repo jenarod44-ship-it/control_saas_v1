@@ -80,13 +80,13 @@ class Turno(models.Model):
     activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.nombre} ({self.hora_entrada} - {self.hora_salida})"    
+        return f"{self.nombre} ({self.hora_entrada} - {self.hora_salida})"
 
     class Meta:
         unique_together = ("empresa", "nombre")
-
-from django.contrib.auth.models import User
-
+        verbose_name = "Turno"
+        verbose_name_plural = "Turnos"
+        ordering = ("empresa__nombre", "nombre")
 class EmpresaUsuario(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
