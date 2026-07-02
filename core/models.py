@@ -18,12 +18,25 @@ class Empresa(models.Model):
 
 
 class Perfil(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="perfil_core")
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="perfil_core"
+    )
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return self.user.username
 
+    class Meta:
+        verbose_name = "Perfil"
+        verbose_name_plural = "Perfiles"
 
 class Incidencia(models.Model):
 
