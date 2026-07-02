@@ -77,9 +77,9 @@ class PerfilAdmin(admin.ModelAdmin):
 @admin.register(EmpresaUsuario)
 class EmpresaUsuarioAdmin(admin.ModelAdmin):
     list_display = ("usuario", "empresa")
-    search_fields = ("usuario__username",)
+    search_fields = ("usuario__username", "empresa__nombre")
     list_filter = ("empresa",)
-
+    ordering = ("usuario__username",)
 # ========================
 # TURNO
 # ========================

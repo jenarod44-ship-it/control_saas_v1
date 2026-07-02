@@ -80,9 +80,10 @@ class EmpresaUsuario(models.Model):
 
     class Meta:
         unique_together = ("usuario", "empresa")
+        verbose_name = "Usuario-Empresa"
+        verbose_name_plural = "Usuarios-Empresa"
 
-    def __str__(self):
-        return f"{self.usuario} - {self.empresa}"
-    
+def __str__(self):
+    return f"{self.usuario.username} → {self.empresa.nombre}"
 
 
