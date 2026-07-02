@@ -189,8 +189,20 @@ def checador(request):
             )
 
         # 🔥 LÓGICA SIMPLE
+        movimientos = list(
+            asistencia.movimientos
+            .order_by("fecha", "hora")
+            .values_list("tipo", flat=True)
+        )
+
         if not asistencia.hora_entrada:
             tipo = "ENTRADA"
+
+        elif "SALIDA_PERMISO" not in movimientos:
+            tipo = "SALIDA_PERMISO"
+
+        elif "REGRESO" not in movimientos:
+            tipo = "REGRESO"
 
         elif not asistencia.hora_salida:
             tipo = "SALIDA"
@@ -206,6 +218,12 @@ def checador(request):
             asistencia.hora_entrada = now.time()
             asistencia.save()
             mensaje = f"{empleado.nombre} - Entrada registrada"
+
+        elif tipo == "SALIDA_PERMISO":
+            mensaje = f"{empleado.nombre} - Salida con permiso registrada"
+
+        elif tipo == "REGRESO":
+            mensaje = f"{empleado.nombre} - Regreso registrado"
 
         elif tipo == "SALIDA":
             asistencia.hora_salida = now.time()

@@ -96,7 +96,7 @@ class EmpresaUsuario(models.Model):
         verbose_name = "Usuario-Empresa"
         verbose_name_plural = "Usuarios-Empresa"
 
-def __str__(self):
-    return f"{self.usuario.username} → {self.empresa.nombre}"
+    def __str__(self):
+        return f"{self.usuario.username} → {self.empresa.nombre}"
 
 
