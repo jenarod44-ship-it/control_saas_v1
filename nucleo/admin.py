@@ -41,7 +41,10 @@ class EmpleadoAdmin(admin.ModelAdmin):
         "nombre",
         "empresa",
         "departamento",
+        "turno",
+        "control_horario",
         "activo",
+        "costo_hora",
     )
 
     search_fields = (
@@ -49,15 +52,46 @@ class EmpleadoAdmin(admin.ModelAdmin):
         "nombre",
         "empresa__nombre",
         "departamento__nombre",
+        "turno__nombre",
     )
 
     list_filter = (
         "empresa",
         "departamento",
+        "turno",
+        "control_horario",
         "activo",
     )
 
     ordering = (
         "empresa__nombre",
         "numero_empleado",
+    )
+
+    fieldsets = (
+        ("Datos del empleado", {
+            "fields": (
+                "empresa",
+                "numero_empleado",
+                "nombre",
+                "activo",
+            )
+        }),
+        ("Organización", {
+            "fields": (
+                "departamento",
+                "turno",
+            )
+        }),
+        ("Control de asistencia", {
+            "fields": (
+                "control_horario",
+                "dias_trabajo",
+            )
+        }),
+        ("Costo", {
+            "fields": (
+                "costo_hora",
+            )
+        }),
     )

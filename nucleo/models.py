@@ -55,8 +55,11 @@ class Empleado(models.Model):
 
     objects = EmpresaManager()   # 👈 🔥 ESTE ES EL IMPORTANTE
 
-    class Meta:
-        unique_together = ("empresa", "numero_empleado")
+class Meta:
+    unique_together = ("empresa", "numero_empleado")
+    verbose_name = "Empleado"
+    verbose_name_plural = "Empleados"
+    ordering = ("empresa__nombre", "numero_empleado")
 
     def __str__(self):
         return f"{self.numero_empleado} - {self.nombre}"    
