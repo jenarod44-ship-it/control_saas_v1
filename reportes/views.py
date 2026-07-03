@@ -802,12 +802,6 @@ def reporte_tiempos_extra(request):
     from asistencia.models import Asistencia, Movimiento
     from nucleo.models import Empleado
     from datetime import datetime
-    from asistencia.models import Movimiento
-
-    print("TOTAL MOVIMIENTOS:", Movimiento.objects.count())
-
-    for m in Movimiento.objects.all()[:10]:
-        print("MOV:", m.id, m.tipo, m.hora, m.asistencia_id)
 
     empresa = request.empresa
 

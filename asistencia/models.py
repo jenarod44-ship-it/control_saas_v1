@@ -104,6 +104,8 @@ class Movimiento(models.Model):
     ("SALIDA", "Salida"),
     ("SALIDA_PERMISO", "Salida con permiso"),
     ("REGRESO", "Regreso"),
+    ("INICIO_TIEMPO_EXTRA", "Inicio tiempo extra"),
+    ("FIN_TIEMPO_EXTRA", "Fin tiempo extra"),
 ]
 
     asistencia = models.ForeignKey(

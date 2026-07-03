@@ -39,6 +39,8 @@ def estado_dia(request):
             asistencia__empleado=empleado,
             fecha=fecha
         ).order_by("hora")
+        extra_inicio = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").first()
+        extra_fin = movimientos.filter(tipo="FIN_TIEMPO_EXTRA").first()
 
         calc = CalculadoraAsistencia(empleado, fecha, movimientos)
         resultado = calc.calcular()
@@ -62,6 +64,8 @@ def estado_dia(request):
             "horas": resultado["horas_trabajadas"],
             "estado": estado,
             "incidencias": resultado["incidencias"],
+            "extra_inicio": extra_inicio.hora if extra_inicio else None,
+            "extra_fin": extra_fin.hora if extra_fin else None,
         })
 
     return render(request, "control/estado_dia.html", {

@@ -103,6 +103,9 @@ def tiempo_extra(request):
         if not asistencia or not asistencia.hora_entrada:
             mensaje = "Debe registrar entrada primero"
             return render(request, "asistencia/tiempo_extra.html", {"mensaje": mensaje})
+        if not asistencia.hora_salida:
+            mensaje = "Debe registrar salida normal antes de iniciar tiempo extra"
+            return render(request, "asistencia/tiempo_extra.html", {"mensaje": mensaje})
 
         movimientos = Movimiento.objects.filter(asistencia=asistencia)
 
@@ -195,23 +198,32 @@ def checador(request):
             .values_list("tipo", flat=True)
         )
 
+        hora_actual = now.time()
+
+        if not empleado.turno:
+            mensaje = "Empleado sin turno asignado"
+            return render(request, "control/checador.html", {"mensaje": mensaje})
+
+        hora_salida_turno = empleado.turno.hora_salida
+
         if not asistencia.hora_entrada:
             tipo = "ENTRADA"
 
-        elif "SALIDA_PERMISO" not in movimientos:
-            tipo = "SALIDA_PERMISO"
+        elif asistencia.hora_salida:
+            mensaje = "El día ya está cerrado"
+            return render(request, "control/checador.html", {"mensaje": mensaje})
 
-        elif "REGRESO" not in movimientos:
+        elif "SALIDA_PERMISO" in movimientos and "REGRESO" not in movimientos:
             tipo = "REGRESO"
 
-        elif not asistencia.hora_salida:
+        elif "SALIDA_PERMISO" in movimientos and "REGRESO" in movimientos:
+            tipo = "SALIDA"
+
+        elif hora_actual >= hora_salida_turno:
             tipo = "SALIDA"
 
         else:
-            mensaje = "El día ya está cerrado"
-            return render(request, "control/checador.html", {
-                "mensaje": mensaje
-            })
+            tipo = "SALIDA_PERMISO"
 
         # 🔥 REGISTRAR
         if tipo == "ENTRADA":
