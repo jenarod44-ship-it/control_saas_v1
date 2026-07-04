@@ -209,33 +209,20 @@ def checador(request):
         if not asistencia.hora_entrada:
             tipo = "ENTRADA"
 
-        elif asistencia.hora_salida:
-            mensaje = "El día ya está cerrado"
-            return render(request, "control/checador.html", {"mensaje": mensaje})
-
-        elif "SALIDA_PERMISO" in movimientos and "REGRESO" not in movimientos:
-            tipo = "REGRESO"
-
-        elif "SALIDA_PERMISO" in movimientos and "REGRESO" in movimientos:
-            tipo = "SALIDA"
-
-        elif hora_actual >= hora_salida_turno:
+        elif not asistencia.hora_salida:
             tipo = "SALIDA"
 
         else:
-            tipo = "SALIDA_PERMISO"
+            mensaje = "El día ya está cerrado"
+            return render(request, "control/checador.html", {
+                "mensaje": mensaje
+            })
 
         # 🔥 REGISTRAR
         if tipo == "ENTRADA":
             asistencia.hora_entrada = now.time()
             asistencia.save()
             mensaje = f"{empleado.nombre} - Entrada registrada"
-
-        elif tipo == "SALIDA_PERMISO":
-            mensaje = f"{empleado.nombre} - Salida con permiso registrada"
-
-        elif tipo == "REGRESO":
-            mensaje = f"{empleado.nombre} - Regreso registrado"
 
         elif tipo == "SALIDA":
             asistencia.hora_salida = now.time()
