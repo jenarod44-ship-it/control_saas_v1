@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from core.models import IncidenciaDia
 
 
 class CalculadoraAsistencia:
@@ -104,11 +105,19 @@ class CalculadoraAsistencia:
     # ========================
     def _estado(self, entrada, salida):
 
+        incidencia_dia = IncidenciaDia.objects.filter(
+            empleado=self.empleado,
+            fecha=self.fecha
+        ).first()
+
+        if incidencia_dia:
+            return incidencia_dia.tipo
+
         if not entrada and not salida:
             return "FALTA"
 
         if entrada and not salida:
-            return "INCOMPLETO"
+             return "INCOMPLETO"
 
         if not entrada and salida:
             return "IRREGULAR"

@@ -19,6 +19,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from django.http import HttpResponse
 from openpyxl.styles import Alignment
+from core.models import IncidenciaDia
 
 
 def calcular_estado_asistencia(empleado, fecha):
@@ -99,6 +100,13 @@ from datetime import time
 
 
 def calcular_estado_asistencia(empleado, fecha):
+    incidencia_dia = IncidenciaDia.objects.filter(
+        empleado=empleado,
+        fecha=fecha
+    ).first()
+
+    if incidencia_dia:
+        return incidencia_dia.tipo
 
     if not debe_generar_falta(empleado, fecha):
         return "NO_LABORAL"

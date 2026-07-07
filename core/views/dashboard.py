@@ -12,7 +12,7 @@ from core.services.asistencia_service import calcular_horas_extra_por_rango
 @solo_operativo
 def dashboard(request):
 
-    print(dir(request.user))
+
 
     empresa = request.empresa
     hoy = timezone.localdate()
@@ -129,14 +129,9 @@ def calcular_estado_asistencia(empleado, fecha):
     if entrada:
 
         if entrada <= hora_limite_retardo:
-            estado = "OK"
-        else:
-            estado = "RETARDO"
+            return "OK"
 
-        if not salida:
-            estado = "INCOMPLETO"
-
-        return estado
+    return "RETARDO"
 
     return "FALTA"
 

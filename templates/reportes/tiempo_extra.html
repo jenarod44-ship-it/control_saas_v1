@@ -1,71 +1,122 @@
-<nav style="margin-bottom:15px;">
-<a href="{% url 'core:dashboard' %}">Panel de Control</a> /
-<strong>Tiempos Extra</strong>
-</nav>
+{% extends "control/base.html" %}
 
-<h1>Reporte de Tiempos Extra</h1>
+{% block content %}
 
-<form method="get">
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Reporte de Tiempo Extra</h2>
+        <small class="text-muted">Consulta de horas extra registradas por empleado</small>
+    </div>
 
-<label>Fecha inicio:</label>
-<input type="date" name="inicio" value="{{ request.GET.inicio }}">
+    <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+        ← Panel de Control
+    </a>
+</div>
 
-<label>Fecha fin:</label>
-<input type="date" name="fin" value="{{ request.GET.fin }}">
+<div class="card shadow border-0 mb-4">
+    <div class="card-body">
 
-<label>Empleado:</label>
-<select name="empleado">
+        <form method="get" class="row g-3 align-items-end">
 
-<option value="">Todos</option>
+            <div class="col-md-3">
+                <label class="form-label">Fecha inicio</label>
+                <input type="date" name="inicio" value="{{ request.GET.inicio }}" class="form-control">
+            </div>
 
-{% for e in empleados %}
-<option value="{{ e.id }}" {% if request.GET.empleado == e.id|stringformat:"s" %}selected{% endif %}>
-{{ e.nombre }}
-</option>
-{% endfor %}
+            <div class="col-md-3">
+                <label class="form-label">Fecha fin</label>
+                <input type="date" name="fin" value="{{ request.GET.fin }}" class="form-control">
+            </div>
 
-</select>
+            <div class="col-md-3">
+                <label class="form-label">Empleado</label>
+                <select name="empleado" class="form-select">
+                    <option value="">Todos</option>
+                    {% for e in empleados %}
+                    <option value="{{ e.id }}" {% if request.GET.empleado == e.id|stringformat:"s" %}selected{% endif %}>
+                        {{ e.numero_empleado }} - {{ e.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-<button type="submit">Filtrar</button>
+            <div class="col-md-3 d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{% url 'reportes:tiempos_extra_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+                    Exportar Excel
+                </a>
+            </div>
 
-</form>
+        </form>
 
-<a href="{% url 'reportes:tiempos_extra_excel' %}?{{ request.GET.urlencode }}">
-Exportar Excel
-</a>
+    </div>
+</div>
 
-<table border="1">
+<div class="card shadow border-0">
+    <div class="card-body">
 
-<tr>
-<th>No. Empleado</th>
-<th>Empleado</th>
-<th>Fecha</th>
-<th>Inicio</th>
-<th>Fin</th>
-<th>Horas</th>
-</tr>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Resultados</h5>
+            <span class="badge bg-secondary">Total horas: {{ total_horas }}</span>
+        </div>
 
-{% for t in tiempos %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered table-sm align-middle">
 
-<tr>
-<td>{{ t.empleado.numero_empleado }}</td>
-<td>{{ t.empleado.nombre }}</td>
-<td>{{ t.fecha }}</td>
-<td>{{ t.hora_inicio|time:"H:i" }}</td>
-<td>{{ t.hora_fin|time:"H:i" }}</td>
-<td>{{ t.horas }}</td>
-</tr>
-{% empty %}
+                <thead class="table-dark text-center">
+                    <tr>
+                        <th>No. empleado</th>
+                        <th>Empleado</th>
+                        <th>Fecha</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Horas</th>
+                    </tr>
+                </thead>
 
-<tr>
-<td colspan="6">No hay tiempos extra</td>
-</tr>
+                <tbody>
+                    {% for t in tiempos %}
+                    <tr>
+                        <td class="text-center">{{ t.empleado.numero_empleado }}</td>
+                        <td>{{ t.empleado.nombre }}</td>
+                        <td class="text-center">{{ t.fecha }}</td>
+                        <td class="text-center">{{ t.hora_inicio|time:"H:i" }}</td>
+                        <td class="text-center">
+                            {% if t.hora_fin %}
+                                {{ t.hora_fin|time:"H:i" }}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">EN CURSO</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if t.horas == "EN CURSO" %}
+                                <span class="badge bg-warning text-dark">EN CURSO</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ t.horas }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
 
-{% endfor %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            No hay tiempos extra para mostrar.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
 
-<tr style="font-weight:bold;">
-<td colspan="5">TOTAL</td>
-<td>{{ total_horas }}</td>
-</tr>
+                <tfoot>
+                    <tr class="table-dark">
+                        <th colspan="5" class="text-end">TOTAL</th>
+                        <th class="text-center">{{ total_horas }}</th>
+                    </tr>
+                </tfoot>
 
-</table>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

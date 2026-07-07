@@ -2,73 +2,94 @@
 
 {% block content %}
 
-<h2>Estado del día</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Estado del día</h2>
+        <small class="text-muted">Resumen operativo de asistencia</small>
+    </div>
 
-<p>Total registros: {{ reporte_dia|length }}</p>
+    <div class="text-end">
+        <span class="badge bg-secondary">Total: {{ reporte_dia|length }}</span>
+    </div>
+</div>
 
-<table class="table table-striped table-bordered table-sm">
+<div class="card shadow border-0">
 
-<thead class="table-dark">
-<tr>
-<th>#</th>
-<th>No. empleado</th>
-<th>Empleado</th>
-<th>Entrada</th>
-<th>Salida</th>
-<th>Extra inicio</th>
-<th>Extra fin</th>
-<th>Estado</th>
-</tr>
-</thead>
+    <div class="card-body">
 
-<tbody>
+        <div class="table-responsive">
 
-{% for r in reporte_dia %}
+            <table class="table table-striped table-hover table-bordered table-sm align-middle">
 
-<tr>
+                <thead class="table-dark text-center">
+                    <tr>
+                        <th>#</th>
+                        <th>No. empleado</th>
+                        <th>Empleado</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>Extra inicio</th>
+                        <th>Extra fin</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
 
-<td>{{ forloop.counter }}</td>
+                <tbody>
 
-<td>{{ r.empleado.numero_empleado }}</td>
+                    {% for r in reporte_dia %}
 
-<td>{{ r.empleado.nombre }}</td>
+                    <tr>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td class="text-center">{{ r.empleado.numero_empleado }}</td>
+                        <td>{{ r.empleado.nombre }}</td>
+                        <td class="text-center">{{ r.entrada|time:"H:i"|default_if_none:"—" }}</td>
+                        <td class="text-center">{{ r.salida|time:"H:i"|default_if_none:"—" }}</td>
+                        <td class="text-center">{{ r.extra_inicio|time:"H:i"|default_if_none:"—" }}</td>
+                        <td class="text-center">{{ r.extra_fin|time:"H:i"|default_if_none:"—" }}</td>
 
-<td>{{ r.entrada|time:"H:i"|default_if_none:"—" }}</td>
+                        <td class="text-center">
+                            {% if r.estado == "RETARDO" %}
+                                <span class="badge bg-warning text-dark">RETARDO</span>
 
-<td>{{ r.salida|time:"H:i"|default_if_none:"—" }}</td>
+                            {% elif r.estado == "INCIDENCIA" %}
+                                <span class="badge bg-primary">INCIDENCIA</span>
 
-<td>{{ r.extra_inicio|time:"H:i"|default_if_none:"—" }}</td>
+                            {% elif r.estado == "FALTA" %}
+                                <span class="badge bg-danger">FALTA</span>
 
-<td>{{ r.extra_fin|time:"H:i"|default_if_none:"—" }}</td>
+                            {% elif r.estado == "DESCANSO" or r.estado == "NO_LABORAL" %}
+                                <span class="badge bg-secondary">DESCANSO</span>
 
-<td>
+                            {% elif r.estado == "TIEMPO_EXTRA" %}
+                                <span class="badge bg-dark">TIEMPO EXTRA</span>
 
-{% if r.estado == "RETARDO" %}
-<span class="badge bg-danger">{{ r.estado }}</span>
+                            {% elif r.estado == "OK" %}
+                                <span class="badge bg-success">PRESENTE</span>
 
-{% elif r.estado == "INCIDENCIA" %}
-<span class="badge bg-warning text-dark">{{ r.estado }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ r.estado }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
 
-{% elif r.estado == "FALTA" %}
-<span class="badge bg-dark">{{ r.estado }}</span>
+                    {% empty %}
 
-{% elif r.estado == "DESCANSO" %}
-<span class="badge bg-secondary">{{ r.estado }}</span>
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            No hay registros para mostrar.
+                        </td>
+                    </tr>
 
-{% else %}
-<span class="badge bg-success">{{ r.estado }}</span>
+                    {% endfor %}
 
-{% endif %}
+                </tbody>
 
-</td>
+            </table>
 
+        </div>
 
-</tr>
+    </div>
 
-{% endfor %}
-
-</tbody>
-
-</table>
+</div>
 
 {% endblock %}

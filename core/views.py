@@ -90,41 +90,28 @@ from django.contrib.auth.decorators import login_required
 
 
 @login_required
+@login_required
 def crear_incidencia(request):
 
-    empresa = request.empresa
+    empresa = getattr(request, "empresa", None)
+
+    if not empresa:
+        from core.models import EmpresaUsuario
+
+        relacion = EmpresaUsuario.objects.filter(
+            usuario=request.user
+        ).select_related("empresa").first()
+
+        if relacion:
+            empresa = relacion.empresa
+
+    if not empresa:
+        messages.error(request, "No hay empresa activa seleccionada")
+        return redirect("core:dashboard")
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
         activo=True
-    )
-
-    if request.method == "POST":
-
-        empleado_id = request.POST.get("empleado")
-
-        empleado = empleados.filter(id=empleado_id).first()
-
-        if not empleado:
-            messages.error(request, "Empleado desconocido para tu empresa")
-            return redirect("nucleo:crear_incidencia")
-
-        incidencia = Incidencia.objects.create(
-            empleado=empleado,
-            tipo=request.POST.get("tipo"),
-            fecha_inicio=request.POST.get("fecha_inicio"),
-            fecha_fin=request.POST.get("fecha_fin"),
-        )
-
-        generar_incidencias_por_rango(incidencia)
-
-        messages.success(request, "Incidencia registrada correctamente")
-        return redirect("core:dashboard")
-
-    return render(
-        request,
-        "nucleo/incidencias.html",
-        {"empleados": empleados}
     )
 
 from django.utils import timezone

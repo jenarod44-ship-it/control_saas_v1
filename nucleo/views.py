@@ -24,6 +24,10 @@ from django.shortcuts import render
 from asistencia.models import TiempoExtra
 from core.decorators import solo_operativo, solo_admin
 
+from core.models import Empresa, Incidencia
+from core.services.incidencias import generar_incidencias_por_rango
+from nucleo.models import Empleado
+
 
 
 def lista_empleados(request):
@@ -197,15 +201,29 @@ def incidencias(request):
     return render(request, "nucleo/incidencias.html", {"empleados": empleados})
 @login_required
 def lista_incidencias(request):
+    empresa = getattr(request, "empresa", None)
 
-    empresa = obtener_empresa_usuario(request)
+    if not empresa:
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id, activa=True).first()
+
+    if not empresa:
+        messages.error(request, "No hay empresa activa seleccionada.")
+        return redirect("dashboard")
 
     incidencias = Incidencia.objects.filter(
         empleado__empresa=empresa
-    ).order_by("-fecha_inicio")
+    ).select_related(
+        "empleado"
+    ).order_by(
+        "-fecha_inicio",
+        "empleado__numero_empleado"
+    )
 
     return render(request, "nucleo/lista_incidencias.html", {
-        "incidencias": incidencias
+        "empresa": empresa,
+        "incidencias": incidencias,
     })
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -213,41 +231,54 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def crear_incidencia(request):
+    empresa = getattr(request, "empresa", None)
 
-    empresa = obtener_empresa_usuario(request)
+    if not empresa:
+        empresa_id = request.session.get("empresa_id")
+
+        if empresa_id:
+            empresa = Empresa.objects.filter(
+                id=empresa_id,
+                activa=True
+            ).first()
+
+    if not empresa:
+        messages.error(request, "No hay empresa activa seleccionada.")
+        return redirect("dashboard")
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
         activo=True
-    )
+    ).order_by("numero_empleado", "nombre")
 
     if request.method == "POST":
-
         empleado_id = request.POST.get("empleado")
+        tipo = request.POST.get("tipo")
+        fecha_inicio = request.POST.get("fecha_inicio")
+        fecha_fin = request.POST.get("fecha_fin")
 
         empleado = empleados.filter(id=empleado_id).first()
 
         if not empleado:
-            messages.error(request, "Empleado desconocido para tu empresa")
+            messages.error(request, "Empleado no válido para la empresa activa.")
             return redirect("nucleo:crear_incidencia")
 
         incidencia = Incidencia.objects.create(
             empleado=empleado,
-            tipo=request.POST.get("tipo"),
-            fecha_inicio=request.POST.get("fecha_inicio"),
-            fecha_fin=request.POST.get("fecha_fin"),
+            tipo=tipo,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
         )
 
         generar_incidencias_por_rango(incidencia)
 
-        messages.success(request, "Incidencia registrada correctamente")
-        return redirect("core:dashboard")
+        messages.success(request, "Incidencia registrada correctamente.")
+        return redirect("nucleo:crear_incidencia")
 
-    return render(
-        request,
-        "nucleo/incidencias.html",
-        {"empleados": empleados}
-    )
+    return render(request, "nucleo/incidencias.html", {
+        "empresa": empresa,
+        "empleados": empleados,
+    })
 
 
       

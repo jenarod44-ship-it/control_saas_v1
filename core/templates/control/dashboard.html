@@ -2,17 +2,7 @@
 
 {% block content %}
 
-<h4>Empresas</h4>
 
-<ul>
-{% for e in empresas %}
-    <li>
-        <a href="{% url 'core:cambiar_empresa' e.empresa.id %}">
-            {{ e.empresa.nombre }}
-        </a>
-    </li>
-{% endfor %}
-</ul>
 
 <h2 class="mt-3">Panel de Control</h2>
 
@@ -20,6 +10,16 @@
 
 <!-- 🔥 TARJETAS -->
 <div class="row g-3 mb-4">
+
+<div class="col-md-2">
+<div class="card shadow border-0">
+<div class="card-body text-center">
+<i class="bi bi-people-fill text-secondary fs-3"></i>
+<h6 class="mt-2">Total</h6>
+<h2 class="fw-bold text-secondary">{{ total_empleados }}</h2>
+</div>
+</div>
+</div>    
 
 <div class="col-md-2">
 <div class="card shadow border-0">
@@ -71,15 +71,6 @@
 </div>
 </div>
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-people-fill text-secondary fs-3"></i>
-<h6 class="mt-2">Total</h6>
-<h2 class="fw-bold text-secondary">{{ total_empleados }}</h2>
-</div>
-</div>
-</div>
 
 </div>
 
@@ -128,14 +119,19 @@
 </div>
 
 <!-- BOTONES -->
-<div class="d-grid gap-2 mt-3">
+<div class="card shadow p-3 mt-4">
 
-    <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">⏱ Checador</a>
-    <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">🔓 Permisos</a>
-    <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">➕ Tiempo Extra</a>
+    <h5>Operación del día</h5>
+
+    <div class="d-grid gap-2">
+
+        <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">⏱ Checador</a>
+        <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">🔓 Permisos</a>
+        <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">➕ Tiempo Extra</a>
+
+    </div>
 
 </div>
-
 {% endblock %}
 
 

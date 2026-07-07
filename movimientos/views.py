@@ -6,7 +6,7 @@ import csv
 from collections import defaultdict
 from core.models import Incidencia
 from core.decorators import solo_operativo, solo_admin
-
+from asistencia.models import Asistencia, Movimiento
 
 
 @login_required
@@ -114,37 +114,18 @@ def lista_movimientos(request):
 
     incidencias = Incidencia.objects.filter(
         empleado__empresa=empresa
-    )
+    ).select_related("empleado")
+
+    if fecha_inicio:
+        asistencias = asistencias.filter(fecha__gte=fecha_inicio)
+        incidencias = incidencias.filter(fecha_inicio__gte=fecha_inicio)
+
+    if fecha_fin:
+        asistencias = asistencias.filter(fecha__lte=fecha_fin)
+        incidencias = incidencias.filter(fecha_inicio__lte=fecha_fin)
+
+    movimientos = []
     total_horas_extra = 0
-
-    if inicio and fecha_fin:
-
-        fecha_inicio_obj = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-        fecha_fin_obj = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-
-        asistencias = asistencias.filter(
-            fecha__range=(fecha_inicio_obj, fecha_fin_obj)
-        )
-
-        incidencias = incidencias.filter(
-            fecha_inicio__range=(fecha_inicio_obj, fecha_fin_obj)
-        )
-
-        asistencias = Asistencia.objects.filter(
-            empleado__empresa=empresa
-        ).select_related("empleado")
-
-        if inicio and fin:
-            asistencias = asistencias.filter(fecha__range=(inicio, fin))
-        elif inicio:
-            asistencias = asistencias.filter(fecha__gte=inicio)
-        elif fin:
-            asistencias = asistencias.filter(fecha__lte=fin)
-        
-
-        total_horas_extra = calcular_horas_extra_por_rango(asistencias)
-
-        
 
     for a in asistencias:
         movimientos.append({
@@ -154,20 +135,20 @@ def lista_movimientos(request):
             "detalle": f"Entrada: {a.hora_entrada or '--'} | Salida: {a.hora_salida or '--'}"
         })
 
+        for m in a.movimientos.all().order_by("hora"):
+            movimientos.append({
+                "fecha": m.fecha,
+                "empleado": a.empleado.nombre,
+                "tipo": m.get_tipo_display(),
+                "detalle": f"{m.hora}"
+            })
+
     for i in incidencias:
         movimientos.append({
             "fecha": i.fecha_inicio,
             "empleado": i.empleado.nombre,
             "tipo": "INCIDENCIA",
             "detalle": f"{i.tipo} ({i.fecha_inicio} → {i.fecha_fin})"
-        })
-
-    for t in tiempos_extra:
-        movimientos.append({
-            "fecha": t.fecha,
-            "empleado": t.empleado.nombre,
-            "tipo": "TIEMPO EXTRA",
-            "detalle": f"{t.tipo} | {t.hora_inicio} → {t.hora_fin or '--'}"
         })
 
     movimientos.sort(key=lambda x: x["fecha"], reverse=True)

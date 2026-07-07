@@ -28,7 +28,7 @@ def generar_incidencias_por_rango(incidencia):
         )
 
         asistencia, _ = Asistencia.objects.get_or_create(
-            empresa=incidencia.empresa,  # ⚠️ IMPORTANTE (por tu unique_together)
+            empresa=incidencia.empleado.empresa,
             empleado=incidencia.empleado,
             fecha=fecha
         )

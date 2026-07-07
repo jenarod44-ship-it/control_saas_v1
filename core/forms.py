@@ -1,5 +1,6 @@
 from django import forms
 from .models import Incidencia
+from nucleo.models import Empleado
 
 
 class IncidenciaForm(forms.ModelForm):
@@ -7,13 +8,13 @@ class IncidenciaForm(forms.ModelForm):
     def __init__(self, *args, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        print(self.fields)
-
         if empresa:
-            self.fields["empleado"].queryset = Empleado.objects.all()
-                
-             
-            
+            self.fields["empleado"].queryset = Empleado.objects.filter(
+                empresa=empresa,
+                activo=True
+            ).order_by("numero_empleado", "nombre")
+        else:
+            self.fields["empleado"].queryset = Empleado.objects.none()
 
     class Meta:
         model = Incidencia

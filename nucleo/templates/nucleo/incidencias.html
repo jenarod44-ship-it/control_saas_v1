@@ -3,32 +3,59 @@
 {% block content %}
 
 <h2>Registrar incidencia</h2>
-{% if mensaje %}
-<div class="alert alert-success">
-    {{ mensaje }}
-</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+    {% endfor %}
 {% endif %}
 
-<form method="post">
-    {% csrf_token %}
+<div class="card shadow-sm">
+    <div class="card-body">
 
-    <select name="empleado" class="form-control mb-2" required>
-        {% for e in empleados %}
-            <option value="{{ e.id }}">{{ e.numero_empleado }} — {{ e.nombre }}</option>
-        {% endfor %}
-    </select>
+        <p><strong>Empresa activa:</strong> {{ empresa.nombre }}</p>
+        <p><strong>Empleados disponibles:</strong> {{ empleados.count }}</p>
 
-    <input type="date" name="fecha_inicio" class="form-control mb-2" required>
-    <input type="date" name="fecha_fin" class="form-control mb-2" required>
+        <form method="post">
+            {% csrf_token %}
 
-    <select name="tipo" class="form-control mb-2" required>
-        <option value="PERMISO">Permiso</option>
-        <option value="VACACIONES">Vacaciones</option>
-        <option value="INCAPACIDAD">Incapacidad</option>
-        <option value="DESCANSO">Descanso</option>
-    </select>
+            <label>Empleado</label>
+            <select name="empleado" class="form-control mb-2" required>
+                <option value="">Seleccione empleado</option>
 
-    <button class="btn btn-primary">Guardar</button>
-</form>
+                {% for empleado in empleados %}
+                    <option value="{{ empleado.id }}">
+                        {{ empleado.numero_empleado }} - {{ empleado.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <label>Tipo</label>
+            <select name="tipo" class="form-control mb-2" required>
+                <option value="PERMISO">Permiso</option>
+                <option value="VACACIONES">Vacaciones</option>
+                <option value="INCAPACIDAD">Incapacidad</option>
+                <option value="DESCANSO">Descanso</option>
+            </select>
+
+            <label>Fecha inicio</label>
+            <input type="date" name="fecha_inicio" class="form-control mb-2" required>
+
+            <label>Fecha fin</label>
+            <input type="date" name="fecha_fin" class="form-control mb-3" required>
+
+            <button type="submit" class="btn btn-primary">
+                Guardar
+            </button>
+
+            <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-secondary">
+                Volver
+            </a>
+        </form>
+
+    </div>
+</div>
 
 {% endblock %}
