@@ -417,10 +417,7 @@ def exportar_tiempos_extra_excel(request):
     fila = 6
     total_horas = 0
 
-    asistencias = Asistencia.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
-
+   
     for a in asistencias:
 
         info = obtener_tiempo_extra(a)
