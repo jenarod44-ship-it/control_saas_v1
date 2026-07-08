@@ -7,6 +7,8 @@ from asistencia.models import Asistencia, Movimiento, TiempoExtra
 from django.shortcuts import redirect
 from asistencia.models import Asistencia, Movimiento
 from core.decorators import solo_operativo
+from core.models import IncidenciaDia
+from django.contrib import messages
 
 
 
@@ -166,7 +168,10 @@ def checador(request):
                 "mensaje": "Ingrese número de empleado"
             })
 
+        empresa = request.empresa
+
         empleado = Empleado.objects.filter(
+            empresa=empresa,
             numero_empleado=numero,
             activo=True
         ).first()
@@ -179,6 +184,28 @@ def checador(request):
         hoy = timezone.localdate()
         now = timezone.localtime()
 
+        incidencia_dia = IncidenciaDia.objects.filter(
+            empleado=empleado,
+            fecha=hoy
+        ).first()
+
+        incidencia_dia = IncidenciaDia.objects.filter(
+            empleado=empleado,
+            fecha=hoy
+        ).first()
+
+        if incidencia_dia and incidencia_dia.tipo.upper() in [
+            "VACACIONES",
+            "INCAPACIDAD",
+            "DESCANSO",
+            "PERMISO",
+        ]:
+            mensaje = f"No se puede registrar asistencia. El empleado tiene {incidencia_dia.tipo} registrada para hoy."
+
+            return render(request, "control/checador.html", {
+                "mensaje": mensaje
+            })
+        
         asistencia = Asistencia.objects.filter(
             empleado=empleado,
             fecha=hoy
