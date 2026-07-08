@@ -44,7 +44,17 @@ def dashboard(request):
     faltas = 0
     
 
+    empleados_con_incidencia = set(
+        IncidenciaDia.objects.filter(
+            empleado__empresa=empresa,
+            fecha=hoy
+        ).values_list("empleado_id", flat=True)
+    )
+
     for empleado in empleados:
+
+        if empleado.id in empleados_con_incidencia:
+            continue
 
         estado = calcular_estado_asistencia(empleado, hoy)
 
