@@ -6,7 +6,7 @@ from asistencia.models import Asistencia, TiempoExtra
 from core.models import IncidenciaDia
 from core.decorators import solo_operativo
 from core.services.asistencia_service import calcular_horas_extra_por_rango
-
+from datetime import datetime, timedelta
 
 
 @solo_operativo
@@ -58,16 +58,37 @@ def dashboard(request):
 
         estado = calcular_estado_asistencia(empleado, hoy)
 
-        if estado == "OK":
-            presentes += 1
+        asistencia = Asistencia.objects.filter(
+            empleado=empleado,
+            fecha=hoy
+        ).first()
 
-        elif estado == "RETARDO":
+        if asistencia and asistencia.hora_entrada and empleado.turno:
+            limite_entrada = (
+                datetime.combine(hoy, empleado.turno.hora_entrada)
+                + timedelta(minutes=empleado.turno.tolerancia_minutos)
+            ).time()
+
+            if asistencia.hora_entrada > limite_entrada:
+                retardos += 1
+
+        if estado in ["OK", "RETARDO", "INCOMPLETO"]:
             presentes += 1
-            retardos += 1
 
         elif estado == "FALTA":
-            faltas += 1
 
+            if empleado.turno:
+                ahora = timezone.localtime().time()
+
+                limite_entrada = (
+                    datetime.combine(hoy, empleado.turno.hora_entrada)
+                    + timedelta(minutes=empleado.turno.tolerancia_minutos)
+                ).time()
+
+                if ahora <= limite_entrada:
+                    continue
+
+            faltas += 1
     from core.models import EmpresaUsuario
 
     empresas = EmpresaUsuario.objects.filter(

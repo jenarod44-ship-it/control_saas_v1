@@ -6,8 +6,8 @@ from nucleo.models import Empleado
 from asistencia.models import Asistencia, TiempoExtra
 from core.models import IncidenciaDia
 from asistencia.models import Movimiento
-from datetime import date, datetime
 from core.calculadora import CalculadoraAsistencia
+from datetime import date, datetime, timedelta
 
 @login_required
 def estado_dia(request):
@@ -45,9 +45,25 @@ def estado_dia(request):
         calc = CalculadoraAsistencia(empleado, fecha, movimientos)
         resultado = calc.calcular()
 
-        calc.guardar_incidencias()
+        # calc.guardar_incidencias()
 
         estado = resultado["estado"]
+
+        # 🔥 ESTADO EN TIEMPO REAL
+# Si es hoy, aún no hay entrada y todavía no vence la tolerancia,
+# mostrar PENDIENTE en lugar de FALTA.
+        if fecha == timezone.localdate() and estado == "FALTA":
+
+            if empleado.turno:
+                ahora = timezone.localtime().time()
+
+                limite_entrada = (
+                    datetime.combine(fecha, empleado.turno.hora_entrada)
+                    + timedelta(minutes=empleado.turno.tolerancia_minutos)
+                ).time()
+
+                if ahora <= limite_entrada:
+                    estado = "PENDIENTE"
 
         # 🔢 CONTADORES
         if estado == "RETARDO":
