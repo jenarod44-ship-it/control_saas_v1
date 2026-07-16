@@ -1,3 +1,37 @@
+from django.contrib import messages
+from django.shortcuts import redirect
+
+from core.services.prenomina_service import ResumenPrenomina
+
+from core.excel.encabezado import (
+    escribir_encabezado_reporte,
+    escribir_encabezados,
+)
+
+from core.excel.estilos import (
+    ALINEACION_CENTRO,
+    ALINEACION_DERECHA,
+    ALINEACION_IZQUIERDA,
+    BORDE_FINO,
+    FUENTE_NEGRITA,
+    RELLENO_ALERTA,
+    RELLENO_ERROR,
+    RELLENO_GRIS,
+    RELLENO_INFORMATIVO,
+    RELLENO_OK,
+)
+
+from core.excel.impresion import configurar_impresion
+from core.excel.respuesta import crear_respuesta_excel
+from core.excel.encabezado import (
+    escribir_encabezado_reporte,
+    escribir_encabezados,
+)
+
+
+
+from core.excel.impresion import configurar_impresion
+from core.excel.respuesta import crear_respuesta_excel
 from django.shortcuts import render
 from asistencia.models import Asistencia
 from nucleo.models import Empleado
@@ -20,6 +54,29 @@ from openpyxl.styles import Font, Alignment
 from django.http import HttpResponse
 from openpyxl.styles import Alignment
 from core.models import IncidenciaDia
+from django.utils import timezone
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
+
+from core.excel.encabezado import escribir_encabezado_reporte
+from core.excel.estilos import (
+    ALINEACION_CENTRO,
+    ALINEACION_ENVUELTA,
+    ALINEACION_IZQUIERDA,
+    BORDE_FINO,
+    FUENTE_ENCABEZADO,
+    FUENTE_NEGRITA,
+    RELLENO_ALERTA,
+    RELLENO_ERROR,
+    RELLENO_GRIS,
+    RELLENO_INFORMATIVO,
+    RELLENO_OK,
+    RELLENO_TITULO,
+)
+from core.excel.impresion import configurar_impresion
+from core.excel.respuesta import crear_respuesta_excel
+from core.services.prenomina_service import ResumenPrenomina
+from nucleo.models import Departamento, Empleado
 
 
 def calcular_estado_asistencia(empleado, fecha):
@@ -343,9 +400,10 @@ def obtener_asistencias(empresa, inicio=None, fin=None, empleado_id=None):
 
     return asistencias
 
-@solo_operativo    
+@solo_operativo
 def exportar_tiempos_extra_excel(request):
-    
+
+    from core.services.asistencia_service import obtener_tiempo_extra
 
     empresa = request.empresa
 
@@ -353,170 +411,243 @@ def exportar_tiempos_extra_excel(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
+    # =========================
+    # CONSULTA BASE
+    # =========================
     asistencias = Asistencia.objects.filter(
         empleado__empresa=empresa
     ).select_related("empleado")
 
-    # 🔥 FILTRO POR FECHA
     if inicio and fin:
-        asistencias = asistencias.filter(fecha__range=(inicio, fin))
+        asistencias = asistencias.filter(
+            fecha__range=(inicio, fin)
+        )
     elif inicio:
-        asistencias = asistencias.filter(fecha__gte=inicio)
+        asistencias = asistencias.filter(
+            fecha__gte=inicio
+        )
     elif fin:
-        asistencias = asistencias.filter(fecha__lte=fin)
+        asistencias = asistencias.filter(
+            fecha__lte=fin
+        )
 
-# 🔥 FILTRO POR EMPLEADO
     if empleado_id and empleado_id != "0":
-        asistencias = asistencias.filter(empleado_id=empleado_id)
+        asistencias = asistencias.filter(
+            empleado_id=empleado_id
+        )
 
-    # 🔥 ORDEN
-    asistencias = asistencias.order_by("empleado__nombre", "fecha")
+    asistencias = asistencias.order_by(
+        "empleado__numero_empleado",
+        "fecha",
+    )
 
-        # 🔥 EXCEL PRO
+    # =========================
+    # CREAR EXCEL
+    # =========================
     wb = Workbook()
     ws = wb.active
     ws.title = "Tiempos Extra"
 
-    # 🔹 TITULO
-    ws["A1"] = "REPORTE DE TIEMPOS EXTRA"
-    ws["A1"].font = Font(bold=True, size=14)
+    fila_encabezado = 6
+    ultima_columna = "F"
 
-    # 🔹 EMPRESA
-    ws["A2"] = f"Empresa: {empresa.nombre if empresa else ''}"
+    escribir_encabezado_reporte(
+        ws=ws,
+        titulo="REPORTE DE TIEMPOS EXTRA",
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        ultima_columna=ultima_columna,
+    )
 
-    # 🔹 PERIODO
-    if inicio and fin:
-        ws["A3"] = f"Periodo: {inicio} a {fin}"
-    elif inicio:
-        ws["A3"] = f"Desde: {inicio}"
-    elif fin:
-        ws["A3"] = f"Hasta: {fin}"
-    else:
-        ws["A3"] = "Periodo: Todos"
-
-    # 🔹 ENCABEZADOS
     encabezados = [
         "No. Empleado",
         "Empleado",
         "Fecha",
-        "Hora inicio",
-        "Hora fin",
-        "Horas"
+        "Hora Inicio",
+        "Hora Fin",
+        "Horas",
     ]
 
-    for col, valor in enumerate(encabezados, 1):
-        ws.cell(row=5, column=col, value=valor)
-
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
-
-    from core.services.asistencia_service import obtener_tiempo_extra
-
-    # 🔹 DATOS
-    fila = 6
-    total_horas = 0
-
-   
-    for a in asistencias:
-
-        info = obtener_tiempo_extra(a)
-
-        if info:
-
-            ws.cell(row=fila, column=1, value=a.empleado.numero_empleado)
-            ws.cell(row=fila, column=2, value=a.empleado.nombre)
-            ws.cell(row=fila, column=3, value=a.fecha)
-            ws.cell(row=fila, column=4, value=info["inicio"])
-            ws.cell(row=fila, column=5, value=info["fin"])
-            ws.cell(row=fila, column=6, value=info["horas"])
-
-            # 🔥 sumar solo si es número
-            if isinstance(info["horas"], int):
-                total_horas += info["horas"]
-
-            fila += 1
-
-
-    # 🔹 TOTAL (FUERA DEL FOR)
-    ws.cell(row=fila + 1, column=5, value="TOTAL GENERAL").font = Font(bold=True)
-    ws.cell(row=fila + 1, column=6, value=total_horas).font = Font(bold=True)
-
-
-# 🔹 AUTO ANCHO
-    for column in ws.columns:
-        max_length = 0
-        col_letter = column[0].column_letter
-
-        for cell in column:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-
-        ws.column_dimensions[col_letter].width = max_length + 2
-
-
-    # 🔹 FREEZE
-    ws.freeze_panes = "A6"
-
-
-    # 🔹 BORDES
-    from openpyxl.styles import Border, Side
-
-    thin = Side(style="thin")
-
-    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, max_col=ws.max_column):
-        for cell in row:
-            cell.border = Border(
-                top=thin,
-                left=thin,
-                right=thin,
-                bottom=thin
-            )
-
-
-    # 🔹 RESPONSE (FUERA DE TODO)
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    escribir_encabezados(
+        ws=ws,
+        fila=fila_encabezado,
+        encabezados=encabezados,
     )
-    response["Content-Disposition"] = "attachment; filename=tiempos_extra.xlsx"
 
-    wb.save(response)
-    return response
+    # =========================
+    # DATOS
+    # =========================
+    fila = fila_encabezado + 1
+    total_horas = 0
+    total_registros = 0
+
+    for asistencia in asistencias:
+
+        info = obtener_tiempo_extra(asistencia)
+
+        if not info:
+            continue
+
+        horas = info.get("horas", 0)
+
+        # No mostrar registros cerrados con cero horas
+        if isinstance(horas, (int, float)) and horas <= 0:
+            continue
+
+        valores = [
+            asistencia.empleado.numero_empleado,
+            asistencia.empleado.nombre,
+            asistencia.fecha,
+            info.get("inicio") or "--",
+            info.get("fin") or "--",
+            horas,
+        ]
+
+        for columna, valor in enumerate(valores, start=1):
+            celda = ws.cell(
+                row=fila,
+                column=columna,
+                value=valor,
+            )
+            celda.border = BORDE_FINO
+
+        ws.cell(fila, 1).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 2).alignment = ALINEACION_IZQUIERDA
+
+        for columna in [3, 4, 5, 6]:
+            ws.cell(fila, columna).alignment = ALINEACION_CENTRO
+
+        ws.cell(fila, 3).number_format = "dd/mm/yyyy"
+
+        if info.get("inicio"):
+            ws.cell(fila, 4).number_format = "hh:mm"
+
+        if info.get("fin"):
+            ws.cell(fila, 5).number_format = "hh:mm"
+
+        horas_celda = ws.cell(fila, 6)
+
+        if isinstance(horas, (int, float)):
+            horas_celda.fill = RELLENO_OK
+            total_horas += horas
+        else:
+            horas_celda.fill = RELLENO_ALERTA
+
+        if not info.get("fin"):
+            ws.cell(fila, 5).fill = RELLENO_ERROR
+
+        fila += 1
+        total_registros += 1
+
+    # =========================
+    # TOTALES
+    # =========================
+    fila_total = fila + 1
+
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=4,
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value=f"TOTAL DE REGISTROS: {total_registros}",
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=5,
+        value="TOTAL HORAS",
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=6,
+        value=total_horas,
+    )
+
+    for columna in range(1, 7):
+        celda = ws.cell(
+            row=fila_total,
+            column=columna,
+        )
+        celda.font = FUENTE_NEGRITA
+        celda.fill = RELLENO_GRIS
+        celda.border = BORDE_FINO
+
+    ws.cell(fila_total, 1).alignment = ALINEACION_DERECHA
+    ws.cell(fila_total, 5).alignment = ALINEACION_DERECHA
+    ws.cell(fila_total, 6).alignment = ALINEACION_CENTRO
+
+    # =========================
+    # ANCHOS
+    # =========================
+    anchos = {
+        "A": 14,
+        "B": 35,
+        "C": 13,
+        "D": 14,
+        "E": 14,
+        "F": 12,
+    }
+
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
+
+    # =========================
+    # IMPRESIÓN Y RESPUESTA
+    # =========================
+    configurar_impresion(
+        ws=ws,
+        fila_encabezado=fila_encabezado,
+        ultima_columna=ultima_columna,
+        ultima_fila=fila_total,
+    )
+
+    return crear_respuesta_excel(
+        workbook=wb,
+        nombre_archivo="reporte_tiempos_extra.xlsx",
+    )
 
 
 @solo_operativo
 def exportar_movimientos_excel(request):
-    
 
-    # 🔹 empresa
     empresa = request.empresa
 
-    # 🔹 parámetros
     fecha_inicio = request.GET.get("inicio")
     fecha_fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
     if fecha_inicio == "None":
         fecha_inicio = None
+
     if fecha_fin == "None":
         fecha_fin = None
+
     if empleado_id == "None":
         empleado_id = None
 
-    # 🔹 empleado
     empleado = None
+
     if empleado_id:
         try:
-            empleado = Empleado.objects.get(id=empleado_id)
+            empleado = Empleado.objects.get(
+                id=empleado_id,
+                empresa=empresa,
+            )
         except Empleado.DoesNotExist:
             empleado = None
 
-    # 🔹 queryset (NO tocar)
     movimientos = obtener_movimientos(
         empresa=empresa,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
-        empleado=empleado
+        empleado=empleado,
     )
 
     if empleado_id:
@@ -524,92 +655,152 @@ def exportar_movimientos_excel(request):
             asistencia__empleado_id=int(empleado_id)
         )
 
-    movimientos = movimientos.order_by("fecha", "hora")
+    movimientos = movimientos.order_by(
+        "asistencia__empleado__numero_empleado",
+        "fecha",
+        "hora",
+    )
 
-    # 🔥 EXCEL PRO
+    # Crear libro antes de usar ws
     wb = Workbook()
     ws = wb.active
     ws.title = "Movimientos"
 
-    # 🔹 TITULO
-    ws["A1"] = "REPORTE DE MOVIMIENTOS"
-    ws["A1"].font = Font(bold=True, size=14)
+    fila_encabezado = 6
+    ultima_columna = "E"
 
-    # 🔹 EMPRESA
-    ws["A2"] = f"Empresa: {empresa.nombre if empresa else ''}"
+    escribir_encabezado_reporte(
+        ws=ws,
+        titulo="REPORTE DE MOVIMIENTOS",
+        empresa=empresa,
+        inicio=fecha_inicio,
+        fin=fecha_fin,
+        ultima_columna=ultima_columna,
+    )
 
-    # 🔹 PERIODO
-    if fecha_inicio and fecha_fin:
-        ws["A3"] = f"Periodo: {fecha_inicio} a {fecha_fin}"
-    elif fecha_inicio:
-        ws["A3"] = f"Desde: {fecha_inicio}"
-    elif fecha_fin:
-        ws["A3"] = f"Hasta: {fecha_fin}"
-    else:
-        ws["A3"] = "Periodo: Todos"
-
-    # 🔹 ENCABEZADOS (fila 5)
     encabezados = [
         "No. Empleado",
         "Empleado",
         "Fecha",
         "Hora",
-        "Movimiento"
+        "Movimiento",
     ]
 
-    for col, valor in enumerate(encabezados, 1):
-        ws.cell(row=5, column=col, value=valor)
-
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
-
-    # 🔹 DATOS (desde fila 6)
-    fila = 6
-
-    for m in movimientos:
-        ws.cell(row=fila, column=1, value=m.asistencia.empleado.numero_empleado)
-        ws.cell(row=fila, column=2, value=m.asistencia.empleado.nombre)
-        ws.cell(row=fila, column=3, value=m.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=fila, column=4, value=m.hora.strftime("%H:%M"))
-        ws.cell(row=fila, column=5, value=m.tipo)
-        fila += 1
-
-    # 🔹 AUTO ANCHO
-    for column in ws.columns:
-        max_length = 0
-        col_letter = column[0].column_letter
-
-        for cell in column:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-
-        ws.column_dimensions[col_letter].width = max_length + 2
-
-    # 🔹 FREEZE
-    ws.freeze_panes = "A6"
-
-    from openpyxl.styles import Border, Side
-
-    thin = Side(style="thin")
-
-    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, max_col=ws.max_column):
-        for cell in row:
-            cell.border = Border(
-                top=thin,
-                left=thin,
-                right=thin,
-                bottom=thin
-            )
-
-    # 🔹 RESPONSE
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    escribir_encabezados(
+        ws=ws,
+        fila=fila_encabezado,
+        encabezados=encabezados,
     )
-    response["Content-Disposition"] = "attachment; filename=movimientos.xlsx"
 
-    wb.save(response)
-    return response
+    fila = fila_encabezado + 1
+    total_registros = 0
+
+    for movimiento in movimientos:
+
+        valores = [
+            movimiento.asistencia.empleado.numero_empleado,
+            movimiento.asistencia.empleado.nombre,
+            movimiento.fecha,
+            movimiento.hora,
+            movimiento.get_tipo_display(),
+        ]
+
+        for columna, valor in enumerate(valores, start=1):
+            celda = ws.cell(
+                row=fila,
+                column=columna,
+                value=valor,
+            )
+            celda.border = BORDE_FINO
+
+        ws.cell(fila, 1).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 2).alignment = ALINEACION_IZQUIERDA
+        ws.cell(fila, 3).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 4).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 5).alignment = ALINEACION_CENTRO
+
+        movimiento_celda = ws.cell(fila, 5)
+        tipo_movimiento = movimiento.tipo.strip().upper()
+
+        if tipo_movimiento == "ENTRADA":
+            movimiento_celda.fill = RELLENO_OK
+
+        elif tipo_movimiento == "SALIDA":
+            movimiento_celda.fill = RELLENO_GRIS
+
+        elif tipo_movimiento == "SALIDA_PERMISO":
+            movimiento_celda.fill = RELLENO_ALERTA
+
+        elif tipo_movimiento == "REGRESO":
+            movimiento_celda.fill = RELLENO_INFORMATIVO
+
+        elif tipo_movimiento == "INICIO_TIEMPO_EXTRA":
+            movimiento_celda.fill = RELLENO_ALERTA
+
+        elif tipo_movimiento == "FIN_TIEMPO_EXTRA":
+            movimiento_celda.fill = RELLENO_OK
+
+        ws.cell(fila, 3).number_format = "dd/mm/yyyy"
+        ws.cell(fila, 4).number_format = "hh:mm"
+
+        fila += 1
+        total_registros += 1
+
+    fila_total = fila + 1
+
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=4,
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value="TOTAL DE REGISTROS",
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=5,
+        value=total_registros,
+    )
+
+    for columna in range(1, 6):
+        celda = ws.cell(
+            row=fila_total,
+            column=columna,
+        )
+        celda.font = FUENTE_NEGRITA
+        celda.fill = RELLENO_GRIS
+        celda.border = BORDE_FINO
+
+    ws.cell(fila_total, 1).alignment = ALINEACION_DERECHA
+    ws.cell(fila_total, 5).alignment = ALINEACION_CENTRO
+
+    anchos = {
+        "A": 14,
+        "B": 35,
+        "C": 13,
+        "D": 12,
+        "E": 28,
+    }
+
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
+
+    configurar_impresion(
+        ws=ws,
+        fila_encabezado=fila_encabezado,
+        ultima_columna=ultima_columna,
+        ultima_fila=fila_total,
+    )
+
+    return crear_respuesta_excel(
+        workbook=wb,
+        nombre_archivo="reporte_movimientos.xlsx",
+    )
 
   
  
@@ -660,10 +851,6 @@ def reporte_excel(request):
 @solo_operativo
 def reporte_excel_xlsx(request):
 
-    from openpyxl.styles import Alignment  # 🔥 FORZAR CONTEXTO
-    
-    
-
     empresa = request.empresa
 
     inicio = request.GET.get("inicio")
@@ -671,31 +858,125 @@ def reporte_excel_xlsx(request):
 
     registros = obtener_asistencias_base(request)
     registros = aplicar_filtros_asistencia(request, registros)
-    registros = registros.order_by("empleado__numero_empleado", "-fecha")
+
+    # Agrupar por empleado y ordenar sus fechas cronológicamente
+    registros = registros.order_by(
+        "empleado__numero_empleado",
+        "fecha"
+    )
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Asistencia"
 
-    # 🔹 TITULO
-    ws["A1"] = "REPORTE DE ASISTENCIA"
-    ws["A1"].font = Font(bold=True, size=14)
+    # =========================
+    # ESTILOS
+    # =========================
+    from openpyxl.styles import (
+        Alignment,
+        Border,
+        Font,
+        PatternFill,
+        Side,
+    )
+    from openpyxl.worksheet.page import PageMargins
 
+    azul_oscuro = PatternFill(
+        start_color="1F4E78",
+        end_color="1F4E78",
+        fill_type="solid"
+    )
+
+    verde = PatternFill(
+        start_color="C6EFCE",
+        end_color="C6EFCE",
+        fill_type="solid"
+    )
+
+    rojo = PatternFill(
+        start_color="FFC7CE",
+        end_color="FFC7CE",
+        fill_type="solid"
+    )
+
+    amarillo = PatternFill(
+        start_color="FFEB9C",
+        end_color="FFEB9C",
+        fill_type="solid"
+    )
+
+    azul_claro = PatternFill(
+        start_color="DDEBF7",
+        end_color="DDEBF7",
+        fill_type="solid"
+    )
+
+    gris = PatternFill(
+        start_color="D9E1F2",
+        end_color="D9E1F2",
+        fill_type="solid"
+    )
+
+    thin = Side(style="thin", color="B7B7B7")
+
+    borde = Border(
+        top=thin,
+        left=thin,
+        right=thin,
+        bottom=thin
+    )
+
+    # =========================
+    # TÍTULO
+    # =========================
+    ws.merge_cells("A1:G1")
+    ws["A1"] = "REPORTE DE ASISTENCIA"
+    ws["A1"].font = Font(
+        bold=True,
+        size=16,
+        color="FFFFFF"
+    )
+    ws["A1"].fill = azul_oscuro
+    ws["A1"].alignment = Alignment(
+        horizontal="center",
+        vertical="center"
+    )
+    ws.row_dimensions[1].height = 26
+
+    # =========================
+    # INFORMACIÓN GENERAL
+    # =========================
+    ws.merge_cells("A2:G2")
     ws["A2"] = f"Empresa: {empresa.nombre if empresa else ''}"
+    ws["A2"].font = Font(bold=True)
+    ws["A2"].alignment = Alignment(horizontal="left")
 
     if inicio and fin:
-        ws["A3"] = f"Periodo: {inicio} a {fin}"
+        periodo = f"Periodo: {inicio} a {fin}"
     elif inicio:
-        ws["A3"] = f"Desde: {inicio}"
+        periodo = f"Desde: {inicio}"
     elif fin:
-        ws["A3"] = f"Hasta: {fin}"
+        periodo = f"Hasta: {fin}"
     else:
-        ws["A3"] = "Periodo: Todos"
+        periodo = "Periodo: Todos"
 
-    # 👉 encabezados SIEMPRE en fila 5
-    fila_encabezado = 5
+    ws.merge_cells("A3:G3")
+    ws["A3"] = periodo
+    ws["A3"].alignment = Alignment(horizontal="left")
+
+    generado = timezone.localtime().strftime("%d/%m/%Y %H:%M")
     
-    # 🔹 ENCABEZADOS
+
+    ws.merge_cells("A4:G4")
+    ws["A4"] = f"Generado: {generado}"
+    ws["A4"].alignment = Alignment(horizontal="left")
+    ws["A4"].font = Font(italic=True, color="666666")
+
+    # =========================
+    # ENCABEZADOS
+    # =========================
+    fila_encabezado = 6
+
     encabezados = [
         "No. Empleado",
         "Empleado",
@@ -703,100 +984,276 @@ def reporte_excel_xlsx(request):
         "Hora Entrada",
         "Hora Salida",
         "Estado",
-        "Incidencias"
+        "Incidencias",
     ]
 
-    for col, valor in enumerate(encabezados, 1):
-         ws.cell(row=5, column=col, value=valor)
+    for columna, valor in enumerate(encabezados, 1):
+        celda = ws.cell(
+            row=fila_encabezado,
+            column=columna,
+            value=valor
+        )
 
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
+        celda.font = Font(
+            bold=True,
+            color="FFFFFF"
+        )
+        celda.fill = azul_oscuro
+        celda.alignment = Alignment(
+            horizontal="center",
+            vertical="center"
+        )
+        celda.border = borde
 
-    # 🔹 CONGELAR
-    ws.freeze_panes = "A6"
+    ws.row_dimensions[fila_encabezado].height = 22
 
-    
+    # =========================
+    # DATOS
+    # =========================
+    fila = fila_encabezado + 1
+    total_registros = 0
 
-    # 🔹 NEGRITAS EN ENCABEZADOS
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
+    for registro in registros:
 
-    # 🔹 DATOS
-    fila = 6
+        estado = calcular_estado_asistencia(
+            registro.empleado,
+            registro.fecha
+        )
 
-    for r in registros:
-        estado = calcular_estado_asistencia(r.empleado, r.fecha)
-        incidencias = calcular_incidencias_asistencia(r.empleado, r.fecha)
+        incidencias = calcular_incidencias_asistencia(
+            registro.empleado,
+            registro.fecha
+        )
 
-        ws.cell(row=fila, column=1, value=r.empleado.numero_empleado)
-        ws.cell(row=fila, column=2, value=r.empleado.nombre)
-        ws.cell(row=fila, column=3, value=r.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=fila, column=4, value=r.hora_entrada.strftime("%H:%M") if r.hora_entrada else "--")
-        ws.cell(row=fila, column=5, value=r.hora_salida.strftime("%H:%M") if r.hora_salida else "--")
-        ws.cell(row=fila, column=6, value=estado)
-        ws.cell(row=fila, column=7, value=" | ".join(incidencias) if incidencias else "OK")
+        incidencia_texto = (
+            " | ".join(incidencias)
+            if incidencias
+            else "OK"
+        )
 
-        fila += 1   
-        
+        valores = [
+            registro.empleado.numero_empleado,
+            registro.empleado.nombre,
+            registro.fecha,
+            registro.hora_entrada,
+            registro.hora_salida,
+            estado,
+            incidencia_texto,
+        ]
 
-    from openpyxl.styles import PatternFill
-    verde = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    rojo = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-    amarillo = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
-    gris = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+        for columna, valor in enumerate(valores, 1):
+            celda = ws.cell(
+                row=fila,
+                column=columna,
+                value=valor
+            )
+            celda.border = borde
+            celda.alignment = Alignment(
+                vertical="center"
+            )
 
-    for row in ws.iter_rows(min_row=6, max_row=ws.max_row):
-        incidencia_cell = row[5]  # 👈 columna Incidencias
+        # Formato de fecha
+        ws.cell(row=fila, column=3).number_format = "dd/mm/yyyy"
 
-        if not incidencia_cell.value:
-            continue
+        # Formato de horas
+        ws.cell(row=fila, column=4).number_format = "hh:mm"
+        ws.cell(row=fila, column=5).number_format = "hh:mm"
 
-        texto = str(incidencia_cell.value).strip().upper()
+        # Sustituir horas vacías visualmente
+        if not registro.hora_entrada:
+            ws.cell(row=fila, column=4, value="--")
 
-        if texto == "OK":
-            incidencia_cell.fill = verde
-        elif "SIN SALIDA" in texto:
-            incidencia_cell.fill = rojo
-        elif "RETARDO" in texto:
-            incidencia_cell.fill = amarillo
-        elif "SIN TURNO" in texto:
-            incidencia_cell.fill = gris
+        if not registro.hora_salida:
+            ws.cell(row=fila, column=5, value="--")
 
-    from openpyxl.styles import Alignment
+        # Alineaciones
+        ws.cell(row=fila, column=1).alignment = Alignment(
+            horizontal="center",
+            vertical="center"
+        )
 
-    for row in ws.iter_rows(min_row=6):
-        row[2].alignment = Alignment(horizontal="center")  # Hora Entrada
-        row[3].alignment = Alignment(horizontal="center")  # Hora Salida
-        row[4].alignment = Alignment(horizontal="center")  # Estado
+        ws.cell(row=fila, column=2).alignment = Alignment(
+            horizontal="left",
+            vertical="center"
+        )
 
-    from openpyxl.styles import Border, Side
+        for columna in [3, 4, 5, 6]:
+            ws.cell(row=fila, column=columna).alignment = Alignment(
+                horizontal="center",
+                vertical="center"
+            )
 
-    thin = Side(style="thin")
+        ws.cell(row=fila, column=7).alignment = Alignment(
+            horizontal="left",
+            vertical="center",
+            wrap_text=True
+        )
 
-    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, max_col=7):
-        for cell in row:
-            cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        # =========================
+        # COLOR DEL ESTADO
+        # =========================
+        estado_celda = ws.cell(row=fila, column=6)
+        estado_normalizado = str(estado or "").strip().upper()
 
-    # 🔹 AJUSTE AUTOMÁTICO DE COLUMNAS
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
+        if estado_normalizado in [
+            "OK",
+            "ASISTENCIA",
+            "COMPLETO",
+        ]:
+            estado_celda.fill = verde
 
-        for cell in column:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
+        elif estado_normalizado == "RETARDO":
+            estado_celda.fill = amarillo
 
-        ws.column_dimensions[column_letter].width = max_length + 2
+        elif estado_normalizado == "FALTA":
+            estado_celda.fill = rojo
 
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif estado_normalizado in [
+            "INCOMPLETO",
+            "PENDIENTE",
+        ]:
+            estado_celda.fill = azul_claro
+
+        elif estado_normalizado in [
+            "VACACIONES",
+            "INCAPACIDAD",
+            "DESCANSO",
+            "PERMISO",
+            "INCIDENCIA",
+        ]:
+            estado_celda.fill = gris
+
+        # =========================
+        # COLOR DE INCIDENCIAS
+        # =========================
+        incidencia_celda = ws.cell(row=fila, column=7)
+        incidencia_normalizada = incidencia_texto.upper()
+
+        if incidencia_normalizada == "OK":
+            incidencia_celda.fill = verde
+
+        elif "SIN SALIDA" in incidencia_normalizada:
+            incidencia_celda.fill = rojo
+
+        elif "RETARDO" in incidencia_normalizada:
+            incidencia_celda.fill = amarillo
+
+        elif "SIN TURNO" in incidencia_normalizada:
+            incidencia_celda.fill = gris
+
+        fila += 1
+        total_registros += 1
+
+    # =========================
+    # TOTAL
+    # =========================
+    fila_total = fila + 1
+
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=6
     )
-    response["Content-Disposition"] = "attachment; filename=asistencia.xlsx"
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value="TOTAL DE REGISTROS"
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=7,
+        value=total_registros
+    )
+
+    for columna in range(1, 8):
+        celda = ws.cell(
+            row=fila_total,
+            column=columna
+        )
+        celda.font = Font(bold=True)
+        celda.fill = gris
+        celda.border = borde
+
+    ws.cell(
+        row=fila_total,
+        column=1
+    ).alignment = Alignment(horizontal="right")
+
+    ws.cell(
+        row=fila_total,
+        column=7
+    ).alignment = Alignment(horizontal="center")
+
+    # =========================
+    # ANCHOS ESTÁNDAR
+    # =========================
+    anchos = {
+        "A": 14,  # No. empleado
+        "B": 35,  # Nombre
+        "C": 13,  # Fecha
+        "D": 14,  # Entrada
+        "E": 14,  # Salida
+        "F": 16,  # Estado
+        "G": 38,  # Incidencias
+    }
+
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
+
+    # =========================
+    # NAVEGACIÓN Y FILTROS
+    # =========================
+    ws.freeze_panes = "A7"
+
+    if total_registros:
+        ws.auto_filter.ref = (
+            f"A{fila_encabezado}:G{fila - 1}"
+        )
+
+    # =========================
+    # CONFIGURACIÓN DE IMPRESIÓN
+    # =========================
+    ws.sheet_view.showGridLines = False
+
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+    ws.print_title_rows = f"{fila_encabezado}:{fila_encabezado}"
+    ws.print_area = f"A1:G{fila_total}"
+
+    ws.page_margins = PageMargins(
+        left=0.25,
+        right=0.25,
+        top=0.50,
+        bottom=0.50,
+        header=0.20,
+        footer=0.20,
+    )
+
+    # =========================
+    # RESPUESTA
+    # =========================
+    response = HttpResponse(
+        content_type=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        )
+    )
+
+    response["Content-Disposition"] = (
+        'attachment; filename="reporte_asistencia.xlsx"'
+    )
 
     wb.save(response)
-    return(response)
+
+    return response
     
 
    
@@ -829,7 +1286,10 @@ def reporte_tiempos_extra(request):
     if empleado_id and empleado_id != "":
         asistencias = asistencias.filter(empleado_id=empleado_id)
 
-    asistencias = asistencias.order_by("empleado__nombre", "fecha")
+    asistencias = asistencias.order_by(
+        "empleado__numero_empleado",
+        "fecha"
+    )
 
     resultados = []
     total_horas = 0
@@ -1010,9 +1470,8 @@ def index(request):
 
 
    
-@solo_operativo    
+@solo_operativo
 def exportar_incidencias_excel_xlsx(request):
-    
 
     empresa = request.empresa
 
@@ -1020,104 +1479,172 @@ def exportar_incidencias_excel_xlsx(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    incidencias = Incidencia.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
+    incidencias = (
+        Incidencia.objects.filter(
+            empleado__empresa=empresa
+        )
+        .select_related("empleado")
+        .order_by(
+            "empleado__numero_empleado",
+            "-fecha_inicio"
+        )
+    )
 
-    if empleado_id and empleado_id != "":
-        incidencias = incidencias.filter(empleado_id=empleado_id)
-
-    if inicio and fin:
+    if empleado_id:
         incidencias = incidencias.filter(
-            fecha_inicio__range=[inicio, fin]
+            empleado_id=empleado_id
+        )
+
+    if inicio:
+        incidencias = incidencias.filter(
+            fecha_inicio__gte=inicio
+        )
+
+    if fin:
+        incidencias = incidencias.filter(
+            fecha_inicio__lte=fin
         )
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Incidencias"
 
-    # 🔹 TITULO
-    ws["A1"] = "REPORTE DE INCIDENCIAS"
-    ws["A1"].font = Font(bold=True, size=14)
+    fila_encabezado = 6
+    ultima_columna = "E"
 
-    # 🔹 EMPRESA
-    ws["A2"] = f"Empresa: {empresa.nombre if empresa else ''}"
+    escribir_encabezado_reporte(
+        ws=ws,
+        titulo="REPORTE DE INCIDENCIAS",
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        ultima_columna=ultima_columna,
+    )
 
-    # 🔹 PERIODO
-    if inicio and fin:
-        ws["A3"] = f"Periodo: {inicio} a {fin}"
-    elif inicio:
-        ws["A3"] = f"Desde: {inicio}"
-    elif fin:
-        ws["A3"] = f"Hasta: {fin}"
-    else:
-        ws["A3"] = "Periodo: Todos"
-
-    # 🔹 ENCABEZADOS
     encabezados = [
         "No. Empleado",
         "Empleado",
         "Tipo",
         "Fecha Inicio",
-        "Fecha Fin"
+        "Fecha Fin",
     ]
 
-    for col, valor in enumerate(encabezados, 1):
-        ws.cell(row=5, column=col, value=valor)
+    escribir_encabezados(
+        ws=ws,
+        fila=fila_encabezado,
+        encabezados=encabezados,
+    )
 
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
+    fila = fila_encabezado + 1
 
-    # 🔹 DATOS
-    fila = 6
+    for incidencia in incidencias:
 
-    for i in incidencias:
-        ws.cell(row=fila, column=1, value=i.empleado.numero_empleado)
-        ws.cell(row=fila, column=2, value=i.empleado.nombre)
-        ws.cell(row=fila, column=3, value=i.tipo)
-        ws.cell(row=fila, column=4, value=i.fecha_inicio.strftime("%d/%m/%Y") if i.fecha_inicio else "")
-        ws.cell(row=fila, column=5, value=i.fecha_fin.strftime("%d/%m/%Y") if i.fecha_fin else "")
-        fila += 1
+        valores = [
+            incidencia.empleado.numero_empleado,
+            incidencia.empleado.nombre,
+            incidencia.tipo,
+            incidencia.fecha_inicio,
+            incidencia.fecha_fin,
+        ]
 
-    # 🔹 AJUSTE COLUMNAS
-    for column in ws.columns:
-        max_length = 0
-        col_letter = column[0].column_letter
+        for columna, valor in enumerate(valores, start=1):
 
-        for cell in column:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-
-        ws.column_dimensions[col_letter].width = max_length + 2
-
-    # 🔹 FREEZE
-    ws.freeze_panes = "A6"
-
-    from openpyxl.styles import Border, Side
-
-    thin = Side(style="thin")
-
-    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, max_col=ws.max_column):
-        for cell in row:
-            cell.border = Border(
-                top=thin,
-                left=thin,
-                right=thin,
-                bottom=thin
+            celda = ws.cell(
+                row=fila,
+                column=columna,
+                value=valor,
             )
 
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = "attachment; filename=incidencias.xlsx"
+            celda.border = BORDE_FINO
 
-    wb.save(response)
-    return response
+        ws.cell(fila, 1).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 2).alignment = ALINEACION_IZQUIERDA
+        ws.cell(fila, 3).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 4).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 5).alignment = ALINEACION_CENTRO
+
+        ws.cell(fila, 4).number_format = "dd/mm/yyyy"
+        ws.cell(fila, 5).number_format = "dd/mm/yyyy"
+
+        tipo = str(incidencia.tipo).upper()
+
+        tipo_cell = ws.cell(fila, 3)
+
+        if tipo == "VACACIONES":
+            tipo_cell.fill = RELLENO_INFORMATIVO
+
+        elif tipo == "INCAPACIDAD":
+            tipo_cell.fill = RELLENO_ERROR
+
+        elif tipo == "DESCANSO":
+            tipo_cell.fill = RELLENO_GRIS
+
+        elif tipo == "PERMISO":
+            tipo_cell.fill = RELLENO_ALERTA
+
+        fila += 1
+
+    fila_total = fila + 1
+
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=4,
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value="TOTAL DE INCIDENCIAS",
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=5,
+        value=incidencias.count(),
+    )
+
+    for columna in range(1, 6):
+
+        celda = ws.cell(
+            row=fila_total,
+            column=columna,
+        )
+
+        celda.font = FUENTE_NEGRITA
+        celda.fill = RELLENO_GRIS
+        celda.border = BORDE_FINO
+
+    ws.cell(fila_total, 1).alignment = ALINEACION_DERECHA
+    ws.cell(fila_total, 5).alignment = ALINEACION_CENTRO
+
+    anchos = {
+        "A": 14,
+        "B": 35,
+        "C": 18,
+        "D": 14,
+        "E": 14,
+    }
+
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
+
+    configurar_impresion(
+        ws=ws,
+        fila_encabezado=fila_encabezado,
+        ultima_columna=ultima_columna,
+        ultima_fila=fila_total,
+    )
+
+    return crear_respuesta_excel(
+        workbook=wb,
+        nombre_archivo="reporte_incidencias.xlsx",
+    )
 
 @solo_operativo
 def exportar_permisos_excel(request):
-    
+
     from asistencia.models import Movimiento
 
     empresa = request.empresa
@@ -1126,141 +1653,219 @@ def exportar_permisos_excel(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    # 🔹 BASE
+    # =========================
+    # CONSULTA BASE
+    # =========================
     movimientos = Movimiento.objects.filter(
         tipo__in=["SALIDA_PERMISO", "REGRESO"],
-        asistencia__empleado__empresa=empresa
-    ).select_related("asistencia__empleado")
+        asistencia__empleado__empresa=empresa,
+    ).select_related(
+        "asistencia__empleado"
+    )
 
-    # 🔹 FILTROS
     if inicio:
         movimientos = movimientos.filter(fecha__gte=inicio)
+
     if fin:
         movimientos = movimientos.filter(fecha__lte=fin)
+
     if empleado_id:
         movimientos = movimientos.filter(
             asistencia__empleado_id=empleado_id
         )
 
-    # 🔹 ORDEN
     movimientos = movimientos.order_by(
         "asistencia__empleado__numero_empleado",
         "fecha",
-        "hora"
+        "hora",
     )
 
-    # 🔹 LOGICA (NO TOCAR)
+    # =========================
+    # EMPAREJAR SALIDA Y REGRESO
+    # =========================
     control = {}
     resultados = []
 
-    for m in movimientos:
+    for movimiento in movimientos:
 
-        key = (m.asistencia_id, m.fecha)
+        llave = (
+            movimiento.asistencia_id,
+            movimiento.fecha,
+        )
 
-        if m.tipo == "SALIDA_PERMISO":
-            control[key] = {
-            "numero_empleado": m.asistencia.empleado.numero_empleado,
-            "empleado": m.asistencia.empleado.nombre,
-            "fecha": m.fecha,
-            "salida": m.hora,
-            "regreso": None
-        }
+        if movimiento.tipo == "SALIDA_PERMISO":
+            control[llave] = {
+                "numero_empleado": (
+                    movimiento.asistencia.empleado.numero_empleado
+                ),
+                "empleado": movimiento.asistencia.empleado.nombre,
+                "fecha": movimiento.fecha,
+                "salida": movimiento.hora,
+                "regreso": None,
+            }
 
-        elif m.tipo == "REGRESO" and key in control:
+        elif movimiento.tipo == "REGRESO" and llave in control:
+            datos = control[llave]
+            datos["regreso"] = movimiento.hora
 
-            data = control[key]
-            data["regreso"] = m.hora
+            resultados.append(datos)
+            del control[llave]
 
-            resultados.append(data)
+    # Incluir permisos que todavía no tienen regreso
+    resultados.extend(control.values())
 
-            del control[key]
+    resultados.sort(
+        key=lambda registro: (
+            str(registro["numero_empleado"]),
+            registro["fecha"],
+            registro["salida"],
+        )
+    )
 
-    # 🔥 EXCEL PRO
+    # =========================
+    # CREAR EXCEL
+    # =========================
     wb = Workbook()
     ws = wb.active
     ws.title = "Permisos"
 
-    # 🔹 TITULO
-    ws["A1"] = "REPORTE DE PERMISOS"
-    ws["A1"].font = Font(bold=True, size=14)
+    fila_encabezado = 6
+    ultima_columna = "E"
 
-    # 🔹 EMPRESA
-    ws["A2"] = f"Empresa: {empresa.nombre if empresa else ''}"
+    escribir_encabezado_reporte(
+        ws=ws,
+        titulo="REPORTE DE PERMISOS",
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        ultima_columna=ultima_columna,
+    )
 
-    # 🔹 PERIODO
-    if inicio and fin:
-        ws["A3"] = f"Periodo: {inicio} a {fin}"
-    elif inicio:
-        ws["A3"] = f"Desde: {inicio}"
-    elif fin:
-        ws["A3"] = f"Hasta: {fin}"
-    else:
-        ws["A3"] = "Periodo: Todos"
-
-    # 🔹 ENCABEZADOS
     encabezados = [
         "No. Empleado",
         "Empleado",
         "Fecha",
         "Salida",
-        "Regreso"
+        "Regreso",
     ]
 
-    for col, valor in enumerate(encabezados, 1):
-        ws.cell(row=5, column=col, value=valor)
+    escribir_encabezados(
+        ws=ws,
+        fila=fila_encabezado,
+        encabezados=encabezados,
+    )
 
-    for cell in ws[5]:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
+    # =========================
+    # DATOS
+    # =========================
+    fila = fila_encabezado + 1
 
-    # 🔹 DATOS
-    fila = 6
+    for registro in resultados:
 
-    for r in resultados:
-        ws.cell(row=fila, column=1, value=r["numero_empleado"])
-        ws.cell(row=fila, column=2, value=r["empleado"])
-        ws.cell(row=fila, column=3, value=r["fecha"].strftime("%d/%m/%Y"))
-        ws.cell(row=fila, column=4, value=r["salida"].strftime("%H:%M") if r["salida"] else "")
-        ws.cell(row=fila, column=5, value=r["regreso"].strftime("%H:%M") if r["regreso"] else "")
+        valores = [
+            registro["numero_empleado"],
+            registro["empleado"],
+            registro["fecha"],
+            registro["salida"] or "--",
+            registro["regreso"] or "--",
+        ]
+
+        for columna, valor in enumerate(valores, start=1):
+            celda = ws.cell(
+                row=fila,
+                column=columna,
+                value=valor,
+            )
+            celda.border = BORDE_FINO
+
+        ws.cell(fila, 1).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 2).alignment = ALINEACION_IZQUIERDA
+        ws.cell(fila, 3).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 4).alignment = ALINEACION_CENTRO
+        ws.cell(fila, 5).alignment = ALINEACION_CENTRO
+
+        ws.cell(fila, 3).number_format = "dd/mm/yyyy"
+
+        if registro["salida"]:
+            ws.cell(fila, 4).number_format = "hh:mm"
+
+        if registro["regreso"]:
+            ws.cell(fila, 5).number_format = "hh:mm"
+
+        # Colores
+        ws.cell(fila, 4).fill = RELLENO_ALERTA
+
+        if registro["regreso"]:
+            ws.cell(fila, 5).fill = RELLENO_INFORMATIVO
+        else:
+            ws.cell(fila, 5).fill = RELLENO_ERROR
+
         fila += 1
 
-    # 🔹 AUTO ANCHO
-    for column in ws.columns:
-        max_length = 0
-        col_letter = column[0].column_letter
+    # =========================
+    # TOTAL
+    # =========================
+    fila_total = fila + 1
 
-        for cell in column:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-
-        ws.column_dimensions[col_letter].width = max_length + 2
-
-    # 🔹 FREEZE
-    ws.freeze_panes = "A6"
-
-    from openpyxl.styles import Border, Side
-
-    thin = Side(style="thin")
-
-    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, max_col=ws.max_column):
-        for cell in row:
-            cell.border = Border(
-                top=thin,
-                left=thin,
-                right=thin,
-                bottom=thin
-            )
-    
-
-    # 🔹 RESPONSE
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=4,
     )
-    response["Content-Disposition"] = "attachment; filename=permisos.xlsx"
 
-    wb.save(response)
-    return response
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value="TOTAL DE PERMISOS",
+    )
 
+    ws.cell(
+        row=fila_total,
+        column=5,
+        value=len(resultados),
+    )
+
+    for columna in range(1, 6):
+        celda = ws.cell(
+            row=fila_total,
+            column=columna,
+        )
+        celda.font = FUENTE_NEGRITA
+        celda.fill = RELLENO_GRIS
+        celda.border = BORDE_FINO
+
+    ws.cell(fila_total, 1).alignment = ALINEACION_DERECHA
+    ws.cell(fila_total, 5).alignment = ALINEACION_CENTRO
+
+    # =========================
+    # ANCHOS
+    # =========================
+    anchos = {
+        "A": 14,
+        "B": 35,
+        "C": 13,
+        "D": 12,
+        "E": 12,
+    }
+
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
+
+    # =========================
+    # IMPRESIÓN Y RESPUESTA
+    # =========================
+    configurar_impresion(
+        ws=ws,
+        fila_encabezado=fila_encabezado,
+        ultima_columna=ultima_columna,
+        ultima_fila=fila_total,
+    )
+
+    return crear_respuesta_excel(
+        workbook=wb,
+        nombre_archivo="reporte_permisos.xlsx",
+    )
 from core.services.asistencia_service import obtener_tiempo_extra
 
 def reporte_nomina(request):
@@ -1412,3 +2017,328 @@ def exportar_nomina_excel(request):
 
     wb.save(response)
     return response
+
+@solo_operativo
+def reporte_pre_nomina(request):
+    empresa = request.empresa
+
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
+    departamento_id = request.GET.get("departamento")
+    empleado_id = request.GET.get("empleado")
+
+    resultados = []
+
+    if inicio and fin:
+        resultados = ResumenPrenomina(
+            empresa=empresa,
+            fecha_inicio=inicio,
+            fecha_fin=fin,
+            departamento_id=departamento_id or None,
+            empleado_id=empleado_id or None,
+        ).generar()
+
+    departamentos = Departamento.objects.filter(
+        empresa=empresa,
+        activo=True,
+    ).order_by("nombre")
+
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True,
+    ).order_by("numero_empleado")
+
+    return render(request, "reportes/pre_nomina.html", {
+        "empresa": empresa,
+        "resultados": resultados,
+        "departamentos": departamentos,
+        "empleados": empleados,
+        "inicio": inicio,
+        "fin": fin,
+        "departamento_id": departamento_id,
+        "empleado_id": empleado_id,
+    })
+
+@solo_operativo
+def exportar_pre_nomina_excel(request):
+
+        empresa = request.empresa
+
+        inicio = request.GET.get("inicio")
+        fin = request.GET.get("fin")
+        departamento_id = request.GET.get("departamento")
+        empleado_id = request.GET.get("empleado")
+
+        if not inicio or not fin:
+            messages.error(
+                request,
+                "Debe seleccionar fecha de inicio y fecha de fin."
+            )
+            return redirect("reportes:pre_nomina")
+
+        resultados = ResumenPrenomina(
+            empresa=empresa,
+            fecha_inicio=inicio,
+            fecha_fin=fin,
+            departamento_id=departamento_id or None,
+            empleado_id=empleado_id or None,
+        ).generar()
+
+        # =========================
+        # CREAR LIBRO
+        # =========================
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Pre-Nómina"
+
+        fila_encabezado = 6
+        ultima_columna = "N"
+
+        escribir_encabezado_reporte(
+            ws=ws,
+            titulo="RESUMEN SEMANAL DE PRE-NÓMINA",
+            empresa=empresa,
+            inicio=inicio,
+            fin=fin,
+            ultima_columna=ultima_columna,
+        )
+
+    # =========================
+    # ENCABEZADOS
+    # =========================
+        encabezados = [
+            "No. Empleado",
+            "Empleado",
+            "Departamento",
+            "Turno",
+            "Días Laborados",
+            "Faltas",
+            "Retardos",
+            "Vacaciones",
+            "Incapacidades",
+            "Descansos",
+            "Permisos",
+            "Salidas Permiso",
+            "Horas Trabajadas",
+            "Tiempo Extra",
+        ]
+
+        escribir_encabezados(
+            ws=ws,
+            fila=fila_encabezado,
+            encabezados=encabezados,
+        )
+
+    # =========================
+    # TOTALES
+    # =========================
+        totales = {
+            "dias_laborados": 0,
+            "faltas": 0,
+            "retardos": 0,
+            "vacaciones": 0,
+            "incapacidades": 0,
+            "descansos": 0,
+            "permisos": 0,
+            "salidas_permiso": 0,
+            "horas_trabajadas": 0,
+            "tiempo_extra": 0,
+        }
+
+    # =========================
+    # DATOS
+    # =========================
+        fila = fila_encabezado + 1
+
+        for registro in resultados:
+
+            valores = [
+                registro["numero_empleado"],
+                registro["empleado"],
+                registro["departamento"],
+                registro["turno"],
+                registro["dias_laborados"],
+                registro["faltas"],
+                registro["retardos"],
+                registro["vacaciones"],
+                registro["incapacidades"],
+                registro["descansos"],
+                registro["permisos"],
+                registro["salidas_permiso"],
+                registro["horas_trabajadas"],
+                registro["tiempo_extra"],
+            ]
+
+            for columna, valor in enumerate(valores, start=1):
+                celda = ws.cell(
+                    row=fila,
+                    column=columna,
+                    value=valor,
+                )
+                celda.border = BORDE_FINO
+
+        # Texto
+            for columna in [1, 4]:
+                ws.cell(
+                    fila,
+                    columna
+                ).alignment = ALINEACION_CENTRO
+
+            for columna in [2, 3]:
+                ws.cell(
+                    fila,
+                    columna
+                ).alignment = ALINEACION_IZQUIERDA
+
+        # Valores numéricos
+            for columna in range(5, 15):
+                ws.cell(
+                    fila,
+                    columna
+                ).alignment = ALINEACION_CENTRO
+
+            ws.cell(fila, 13).number_format = "0.00"
+            ws.cell(fila, 14).number_format = "0.00"
+
+        # =========================
+        # COLORES
+        # =========================
+            if registro["dias_laborados"] > 0:
+                ws.cell(fila, 5).fill = RELLENO_OK
+
+            if registro["faltas"] > 0:
+                ws.cell(fila, 6).fill = RELLENO_ERROR
+
+            if registro["retardos"] > 0:
+                ws.cell(fila, 7).fill = RELLENO_ALERTA
+
+            if registro["vacaciones"] > 0:
+                ws.cell(fila, 8).fill = RELLENO_INFORMATIVO
+
+            if registro["incapacidades"] > 0:
+                ws.cell(fila, 9).fill = RELLENO_ERROR
+
+            if registro["descansos"] > 0:
+                ws.cell(fila, 10).fill = RELLENO_GRIS
+
+            if registro["permisos"] > 0:
+                ws.cell(fila, 11).fill = RELLENO_ALERTA
+
+            if registro["salidas_permiso"] > 0:
+                ws.cell(fila, 12).fill = RELLENO_INFORMATIVO
+
+            if registro["tiempo_extra"] > 0:
+                ws.cell(fila, 14).fill = RELLENO_OK
+
+        # Acumular totales
+            for clave in totales:
+                valor = registro.get(clave, 0) or 0
+
+                if isinstance(valor, (int, float)):
+                    totales[clave] += valor
+
+            fila += 1
+
+    # =========================
+    # FILA DE TOTALES
+    # =========================
+        fila_total = fila + 1
+
+        ws.merge_cells(
+            start_row=fila_total,
+            start_column=1,
+            end_row=fila_total,
+            end_column=4,
+        )
+
+        ws.cell(
+            row=fila_total,
+            column=1,
+            value="TOTALES GENERALES",
+        )
+
+        valores_totales = [
+            totales["dias_laborados"],
+            totales["faltas"],
+            totales["retardos"],
+            totales["vacaciones"],
+            totales["incapacidades"],
+            totales["descansos"],
+            totales["permisos"],
+            totales["salidas_permiso"],
+            round(totales["horas_trabajadas"], 2),
+            round(totales["tiempo_extra"], 2),
+        ]
+
+        for columna, valor in enumerate(
+            valores_totales,
+            start=5,
+        ):
+            ws.cell(
+                row=fila_total,
+                column=columna,
+                value=valor,
+            )
+
+        for columna in range(1, 15):
+            celda = ws.cell(
+                row=fila_total,
+                column=columna,
+            )
+            celda.font = FUENTE_NEGRITA
+            celda.fill = RELLENO_GRIS
+            celda.border = BORDE_FINO
+            celda.alignment = ALINEACION_CENTRO
+
+        ws.cell(
+            fila_total,
+            1
+        ).alignment = ALINEACION_DERECHA
+
+        ws.cell(
+            fila_total,
+            13
+        ).number_format = "0.00"
+
+        ws.cell(
+            fila_total,
+            14
+        ).number_format = "0.00"
+
+    # =========================
+    # ANCHOS
+    # =========================
+        anchos = {
+            "A": 14,
+            "B": 32,
+            "C": 24,
+            "D": 20,
+            "E": 13,
+            "F": 10,
+            "G": 11,
+            "H": 12,
+            "I": 15,
+            "J": 12,
+            "K": 11,
+            "L": 16,
+            "M": 17,
+            "N": 13,
+        }
+
+        for columna, ancho in anchos.items():
+            ws.column_dimensions[columna].width = ancho
+
+    # =========================
+    # IMPRESIÓN
+    # =========================
+        configurar_impresion(
+            ws=ws,
+            fila_encabezado=fila_encabezado,
+            ultima_columna=ultima_columna,
+            ultima_fila=fila_total,
+        )
+
+        return crear_respuesta_excel(
+            workbook=wb,
+            nombre_archivo="resumen_pre_nomina.xlsx",
+        )

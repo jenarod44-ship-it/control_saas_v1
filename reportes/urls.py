@@ -16,6 +16,17 @@ urlpatterns = [
     path("asistencia/excel/", views.reporte_excel, name="reporte_excel"),
     path("asistencia/excel-xlsx/", views.reporte_excel_xlsx, name="reporte_excel_xlsx"),
     path("nomina/excel/", views.exportar_nomina_excel, name="exportar_nomina_excel"),
+    path(
+        "pre-nomina/",
+        views.reporte_pre_nomina,
+        name="pre_nomina"
+    ),
+
+    path(
+        "pre-nomina/excel/",
+        views.exportar_pre_nomina_excel,
+        name="pre_nomina_excel"
+    ),
 
     # Excel PRO incidencias
     path(

@@ -49,9 +49,10 @@ def estado_dia(request):
 
         estado = resultado["estado"]
 
-        # 🔥 ESTADO EN TIEMPO REAL
-# Si es hoy, aún no hay entrada y todavía no vence la tolerancia,
-# mostrar PENDIENTE en lugar de FALTA.
+        if not empleado.control_horario and estado == "FALTA":
+            estado = "SIN CONTROL"
+
+        
         if fecha == timezone.localdate() and estado == "FALTA":
 
             if empleado.turno:
@@ -67,11 +68,14 @@ def estado_dia(request):
 
         # 🔢 CONTADORES
         if estado == "RETARDO":
+            presentes += 1
             retardos += 1
+
+        elif estado in ["ASISTENCIA", "OK", "COMPLETO", "INCOMPLETO"]:
+            presentes += 1
+
         elif estado == "FALTA":
             faltas += 1
-        else:
-            presentes += 1
 
         reporte_dia.append({
             "empleado": empleado,

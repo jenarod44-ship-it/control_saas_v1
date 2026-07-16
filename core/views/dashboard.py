@@ -56,26 +56,38 @@ def dashboard(request):
         if empleado.id in empleados_con_incidencia:
             continue
 
-        estado = calcular_estado_asistencia(empleado, hoy)
-
         asistencia = Asistencia.objects.filter(
             empleado=empleado,
             fecha=hoy
         ).first()
 
-        if asistencia and asistencia.hora_entrada and empleado.turno:
-            limite_entrada = (
-                datetime.combine(hoy, empleado.turno.hora_entrada)
-                + timedelta(minutes=empleado.turno.tolerancia_minutos)
-            ).time()
+        if not empleado.control_horario:
+            if asistencia and asistencia.hora_entrada:
+                presentes += 1
+            continue
+        
+        asistencia = Asistencia.objects.filter(
+            empleado=empleado,
+            fecha=hoy
+        ).first()
 
-            if asistencia.hora_entrada > limite_entrada:
-                retardos += 1
-
-        if estado in ["OK", "RETARDO", "INCOMPLETO"]:
+        if asistencia and asistencia.hora_entrada:
             presentes += 1
 
-        elif estado == "FALTA":
+            if empleado.turno:
+                limite_entrada = (
+                    datetime.combine(hoy, empleado.turno.hora_entrada)
+                    + timedelta(minutes=empleado.turno.tolerancia_minutos)
+                ).time()
+
+                if asistencia.hora_entrada > limite_entrada:
+                    retardos += 1
+
+            continue
+
+        estado = calcular_estado_asistencia(empleado, hoy)
+
+        if estado == "FALTA":
 
             if empleado.turno:
                 ahora = timezone.localtime().time()
@@ -87,6 +99,8 @@ def dashboard(request):
 
                 if ahora <= limite_entrada:
                     continue
+            else:
+                continue
 
             faltas += 1
     from core.models import EmpresaUsuario
