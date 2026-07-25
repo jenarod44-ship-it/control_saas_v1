@@ -2125,7 +2125,7 @@ def exportar_pre_nomina_excel(request):
         "Vacaciones",
         "Incapacidades",
         "Descansos",
-        "Permisos",
+        "Días Clasificados",
         "Total",
         "Período",
 
