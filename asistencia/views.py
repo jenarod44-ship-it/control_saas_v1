@@ -49,23 +49,60 @@ def permisos(request):
                 mensaje = "Primero debe registrar entrada"
 
             else:
-                Movimiento.objects.create(
+                ultimo_movimiento = Movimiento.objects.filter(
                     asistencia=asistencia,
-                    tipo=tipo,
-                    fecha=hoy,
-                    hora=now.time()
-                )
-
-                print("🔥 MOVIMIENTO CREADO")
+                    tipo__in=["SALIDA_PERMISO", "REGRESO"],
+                ).order_by("-hora").first()
 
                 if tipo == "SALIDA_PERMISO":
-                    mensaje = "Salida con permiso registrada"
-                else:
-                    mensaje = "Regreso registrado"
 
-    return render(request, "asistencia/permisos.html", {
-        "mensaje": mensaje
-    })
+                    if (
+                        ultimo_movimiento
+                        and ultimo_movimiento.tipo == "SALIDA_PERMISO"
+                    ):
+                        mensaje = (
+                            "Ya existe una salida con permiso "
+                            "pendiente de regreso."
+                        )
+
+                    else:
+                        Movimiento.objects.create(
+                            asistencia=asistencia,
+                            tipo=tipo,
+                            fecha=hoy,
+                            hora=now.time()
+                        )
+
+                        print("🔥 MOVIMIENTO CREADO")
+
+                        mensaje = "Salida con permiso registrada"
+
+                elif tipo == "REGRESO":
+
+                    if (
+                        not ultimo_movimiento
+                        or ultimo_movimiento.tipo != "SALIDA_PERMISO"
+                    ):
+                        mensaje = (
+                            "No existe una salida con permiso "
+                            "pendiente de regreso."
+                        )
+
+                    else:
+                        Movimiento.objects.create(
+                            asistencia=asistencia,
+                            tipo=tipo,
+                            fecha=hoy,
+                            hora=now.time()
+                        )
+
+                        print("🔥 MOVIMIENTO CREADO")
+
+                        mensaje = "Regreso registrado"
+
+                else:
+                    mensaje = "Tipo de movimiento no válido"
+    return render(request, "asistencia/permisos.html", { "mensaje":mensaje})
                 
 
 
