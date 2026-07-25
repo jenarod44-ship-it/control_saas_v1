@@ -1,14 +1,26 @@
 def es_dia_laboral(empleado, fecha):
+    """
+    Indica si una fecha es laborable para un empleado.
 
-    
+    Los días se obtienen de empleado.dias_trabajo:
+    0 = lunes
+    1 = martes
+    2 = miércoles
+    3 = jueves
+    4 = viernes
+    5 = sábado
+    6 = domingo
+    """
 
-    dia = fecha.weekday()  # 0=lunes ... 6=domingo
+    if not empleado or not fecha:
+        return False
 
-    # 🔥 SI EL DEPARTAMENTO TRABAJA FINES → SIEMPRE LABORAL
-    if empleado.departamento and getattr(empleado.departamento, "trabaja_fines_semana", False):
-        return True
+    dias_configurados = empleado.dias_trabajo or ""
 
-    # 🔥 lógica normal por días
-    dias = empleado.dias_trabajo.split(",") if empleado.dias_trabajo else []
+    dias_laborales = {
+        dia.strip()
+        for dia in dias_configurados.split(",")
+        if dia.strip() in {"0", "1", "2", "3", "4", "5", "6"}
+    }
 
-    return str(dia) in dias
+    return str(fecha.weekday()) in dias_laborales

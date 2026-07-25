@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import redirect
+from core.utils.asistencia import calcular_estado_asistencia
 
 from core.services.prenomina_service import ResumenPrenomina
 
@@ -360,6 +361,10 @@ def reporte_permisos(request):
             resultados.append(data)
 
             del control[key]
+
+                # Mostrar salidas con permiso que todavía no tienen regreso
+    for data in control.values():
+        resultados.append(data)
 
     # 🔹 EMPLEADOS (filtro)
     empleados = Empleado.objects.filter(
@@ -2062,283 +2067,331 @@ def reporte_pre_nomina(request):
 @solo_operativo
 def exportar_pre_nomina_excel(request):
 
-        empresa = request.empresa
+    empresa = request.empresa
 
-        inicio = request.GET.get("inicio")
-        fin = request.GET.get("fin")
-        departamento_id = request.GET.get("departamento")
-        empleado_id = request.GET.get("empleado")
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
+    departamento_id = request.GET.get("departamento")
+    empleado_id = request.GET.get("empleado")
 
-        if not inicio or not fin:
-            messages.error(
-                request,
-                "Debe seleccionar fecha de inicio y fecha de fin."
-            )
-            return redirect("reportes:pre_nomina")
-
-        resultados = ResumenPrenomina(
-            empresa=empresa,
-            fecha_inicio=inicio,
-            fecha_fin=fin,
-            departamento_id=departamento_id or None,
-            empleado_id=empleado_id or None,
-        ).generar()
-
-        # =========================
-        # CREAR LIBRO
-        # =========================
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Pre-Nómina"
-
-        fila_encabezado = 6
-        ultima_columna = "N"
-
-        escribir_encabezado_reporte(
-            ws=ws,
-            titulo="RESUMEN SEMANAL DE PRE-NÓMINA",
-            empresa=empresa,
-            inicio=inicio,
-            fin=fin,
-            ultima_columna=ultima_columna,
+    if not inicio or not fin:
+        messages.error(
+            request,
+            "Debe seleccionar fecha de inicio y fecha de fin."
         )
+        return redirect("reportes:pre_nomina")
+
+    resultados = ResumenPrenomina(
+        empresa=empresa,
+        fecha_inicio=inicio,
+        fecha_fin=fin,
+        departamento_id=departamento_id or None,
+        empleado_id=empleado_id or None,
+    ).generar()
+
+    # =========================
+    # CREAR LIBRO
+    # =========================
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pre-Nómina"
+
+    fila_encabezado = 6
+
+    # 17 columnas: A hasta Q
+    ultima_columna = "Q"
+
+    escribir_encabezado_reporte(
+        ws=ws,
+        titulo="RESUMEN SEMANAL DE PRE-NÓMINA",
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        ultima_columna=ultima_columna,
+    )
 
     # =========================
     # ENCABEZADOS
     # =========================
-        encabezados = [
-            "No. Empleado",
-            "Empleado",
-            "Departamento",
-            "Turno",
-            "Días Laborados",
-            "Faltas",
-            "Retardos",
-            "Vacaciones",
-            "Incapacidades",
-            "Descansos",
-            "Permisos",
-            "Salidas Permiso",
-            "Horas Trabajadas",
-            "Tiempo Extra",
-        ]
+    encabezados = [
+        "No. Empleado",
+        "Empleado",
+        "Departamento",
+        "Turno",
 
-        escribir_encabezados(
-            ws=ws,
-            fila=fila_encabezado,
-            encabezados=encabezados,
-        )
+        # Cuadre del período
+        "Días a Pagar",
+        "Faltas",
+        "Vacaciones",
+        "Incapacidades",
+        "Descansos",
+        "Permisos",
+        "Total",
+        "Período",
+
+        # Información adicional
+        "Días Laborados",
+        "Retardos",
+        "Salidas Permiso",
+        "Horas Trabajadas",
+        "Tiempo Extra",
+    ]
+
+    escribir_encabezados(
+        ws=ws,
+        fila=fila_encabezado,
+        encabezados=encabezados,
+    )
 
     # =========================
     # TOTALES
     # =========================
-        totales = {
-            "dias_laborados": 0,
-            "faltas": 0,
-            "retardos": 0,
-            "vacaciones": 0,
-            "incapacidades": 0,
-            "descansos": 0,
-            "permisos": 0,
-            "salidas_permiso": 0,
-            "horas_trabajadas": 0,
-            "tiempo_extra": 0,
-        }
+    totales = {
+        "dias_a_pagar": 0,
+        "faltas": 0,
+        "vacaciones": 0,
+        "incapacidades": 0,
+        "descansos": 0,
+        "permisos": 0,
+        "total_fila": 0,
+        "dias_periodo": 0,
+        "dias_laborados": 0,
+        "retardos": 0,
+        "salidas_permiso": 0,
+        "horas_trabajadas": 0,
+        "tiempo_extra": 0,
+    }
 
     # =========================
     # DATOS
     # =========================
-        fila = fila_encabezado + 1
+    fila = fila_encabezado + 1
 
-        for registro in resultados:
+    for registro in resultados:
 
-            valores = [
-                registro["numero_empleado"],
-                registro["empleado"],
-                registro["departamento"],
-                registro["turno"],
-                registro["dias_laborados"],
-                registro["faltas"],
-                registro["retardos"],
-                registro["vacaciones"],
-                registro["incapacidades"],
-                registro["descansos"],
-                registro["permisos"],
-                registro["salidas_permiso"],
-                registro["horas_trabajadas"],
-                registro["tiempo_extra"],
-            ]
+        valores = [
+            registro["numero_empleado"],
+            registro["empleado"],
+            registro["departamento"],
+            registro["turno"],
 
-            for columna, valor in enumerate(valores, start=1):
-                celda = ws.cell(
-                    row=fila,
-                    column=columna,
-                    value=valor,
-                )
-                celda.border = BORDE_FINO
+            registro["dias_a_pagar"],
+            registro["faltas"],
+            registro["vacaciones"],
+            registro["incapacidades"],
+            registro["descansos"],
+            registro["permisos"],
+            registro["total_fila"],
+            registro["dias_periodo"],
 
-        # Texto
-            for columna in [1, 4]:
-                ws.cell(
-                    fila,
-                    columna
-                ).alignment = ALINEACION_CENTRO
-
-            for columna in [2, 3]:
-                ws.cell(
-                    fila,
-                    columna
-                ).alignment = ALINEACION_IZQUIERDA
-
-        # Valores numéricos
-            for columna in range(5, 15):
-                ws.cell(
-                    fila,
-                    columna
-                ).alignment = ALINEACION_CENTRO
-
-            ws.cell(fila, 13).number_format = "0.00"
-            ws.cell(fila, 14).number_format = "0.00"
-
-        # =========================
-        # COLORES
-        # =========================
-            if registro["dias_laborados"] > 0:
-                ws.cell(fila, 5).fill = RELLENO_OK
-
-            if registro["faltas"] > 0:
-                ws.cell(fila, 6).fill = RELLENO_ERROR
-
-            if registro["retardos"] > 0:
-                ws.cell(fila, 7).fill = RELLENO_ALERTA
-
-            if registro["vacaciones"] > 0:
-                ws.cell(fila, 8).fill = RELLENO_INFORMATIVO
-
-            if registro["incapacidades"] > 0:
-                ws.cell(fila, 9).fill = RELLENO_ERROR
-
-            if registro["descansos"] > 0:
-                ws.cell(fila, 10).fill = RELLENO_GRIS
-
-            if registro["permisos"] > 0:
-                ws.cell(fila, 11).fill = RELLENO_ALERTA
-
-            if registro["salidas_permiso"] > 0:
-                ws.cell(fila, 12).fill = RELLENO_INFORMATIVO
-
-            if registro["tiempo_extra"] > 0:
-                ws.cell(fila, 14).fill = RELLENO_OK
-
-        # Acumular totales
-            for clave in totales:
-                valor = registro.get(clave, 0) or 0
-
-                if isinstance(valor, (int, float)):
-                    totales[clave] += valor
-
-            fila += 1
-
-    # =========================
-    # FILA DE TOTALES
-    # =========================
-        fila_total = fila + 1
-
-        ws.merge_cells(
-            start_row=fila_total,
-            start_column=1,
-            end_row=fila_total,
-            end_column=4,
-        )
-
-        ws.cell(
-            row=fila_total,
-            column=1,
-            value="TOTALES GENERALES",
-        )
-
-        valores_totales = [
-            totales["dias_laborados"],
-            totales["faltas"],
-            totales["retardos"],
-            totales["vacaciones"],
-            totales["incapacidades"],
-            totales["descansos"],
-            totales["permisos"],
-            totales["salidas_permiso"],
-            round(totales["horas_trabajadas"], 2),
-            round(totales["tiempo_extra"], 2),
+            registro["dias_laborados"],
+            registro["retardos"],
+            registro["salidas_permiso"],
+            registro["horas_trabajadas"],
+            registro["tiempo_extra"],
         ]
 
-        for columna, valor in enumerate(
-            valores_totales,
-            start=5,
-        ):
-            ws.cell(
-                row=fila_total,
+        for columna, valor in enumerate(valores, start=1):
+
+            celda = ws.cell(
+                row=fila,
                 column=columna,
                 value=valor,
             )
 
-        for columna in range(1, 15):
-            celda = ws.cell(
-                row=fila_total,
-                column=columna,
-            )
-            celda.font = FUENTE_NEGRITA
-            celda.fill = RELLENO_GRIS
             celda.border = BORDE_FINO
-            celda.alignment = ALINEACION_CENTRO
 
-        ws.cell(
-            fila_total,
-            1
-        ).alignment = ALINEACION_DERECHA
+        # =========================
+        # ALINEACIÓN
+        # =========================
 
-        ws.cell(
-            fila_total,
-            13
-        ).number_format = "0.00"
+        # Número de empleado y turno
+        for columna in [1, 4]:
+            ws.cell(
+                row=fila,
+                column=columna,
+            ).alignment = ALINEACION_CENTRO
 
+        # Empleado y departamento
+        for columna in [2, 3]:
+            ws.cell(
+                row=fila,
+                column=columna,
+            ).alignment = ALINEACION_IZQUIERDA
+
+        # Valores numéricos
+        for columna in range(5, 18):
+            ws.cell(
+                row=fila,
+                column=columna,
+            ).alignment = ALINEACION_CENTRO
+
+        # Horas trabajadas y tiempo extra
+        ws.cell(fila, 16).number_format = "0.00"
+        ws.cell(fila, 17).number_format = "0.00"
+
+        # =========================
+        # COLORES
+        # =========================
+
+        # Días a pagar
+        if registro["dias_a_pagar"] > 0:
+            ws.cell(fila, 5).fill = RELLENO_OK
+
+        # Faltas
+        if registro["faltas"] > 0:
+            ws.cell(fila, 6).fill = RELLENO_ERROR
+
+        # Vacaciones
+        if registro["vacaciones"] > 0:
+            ws.cell(fila, 7).fill = RELLENO_INFORMATIVO
+
+        # Incapacidades
+        if registro["incapacidades"] > 0:
+            ws.cell(fila, 8).fill = RELLENO_ERROR
+
+        # Descansos
+        if registro["descansos"] > 0:
+            ws.cell(fila, 9).fill = RELLENO_GRIS
+
+        # Permisos
+        if registro["permisos"] > 0:
+            ws.cell(fila, 10).fill = RELLENO_ALERTA
+
+        # Total de la fila
+        if registro.get("diferencia", 0) == 0:
+            ws.cell(fila, 11).fill = RELLENO_OK
+        else:
+            ws.cell(fila, 11).fill = RELLENO_ERROR
+
+        # Período
+        ws.cell(fila, 12).fill = RELLENO_GRIS
+
+        # Retardos
+        if registro["retardos"] > 0:
+            ws.cell(fila, 14).fill = RELLENO_ALERTA
+
+        # Salidas con permiso
+        if registro["salidas_permiso"] > 0:
+            ws.cell(fila, 15).fill = RELLENO_INFORMATIVO
+
+        # Tiempo extra
+        if registro["tiempo_extra"] > 0:
+            ws.cell(fila, 17).fill = RELLENO_OK
+
+        # =========================
+        # ACUMULAR TOTALES
+        # =========================
+        for clave in totales:
+
+            valor = registro.get(clave, 0) or 0
+
+            if isinstance(valor, (int, float)):
+                totales[clave] += valor
+
+        fila += 1
+
+    # =========================
+    # FILA DE TOTALES
+    # =========================
+    fila_total = fila + 1
+
+    ws.merge_cells(
+        start_row=fila_total,
+        start_column=1,
+        end_row=fila_total,
+        end_column=4,
+    )
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+        value="TOTALES GENERALES",
+    )
+
+    valores_totales = [
+        totales["dias_a_pagar"],
+        totales["faltas"],
+        totales["vacaciones"],
+        totales["incapacidades"],
+        totales["descansos"],
+        totales["permisos"],
+        totales["total_fila"],
+        totales["dias_periodo"],
+        totales["dias_laborados"],
+        totales["retardos"],
+        totales["salidas_permiso"],
+        round(totales["horas_trabajadas"], 2),
+        round(totales["tiempo_extra"], 2),
+    ]
+
+    for columna, valor in enumerate(
+        valores_totales,
+        start=5,
+    ):
         ws.cell(
-            fila_total,
-            14
-        ).number_format = "0.00"
+            row=fila_total,
+            column=columna,
+            value=valor,
+        )
+
+    for columna in range(1, 18):
+
+        celda = ws.cell(
+            row=fila_total,
+            column=columna,
+        )
+
+        celda.font = FUENTE_NEGRITA
+        celda.fill = RELLENO_GRIS
+        celda.border = BORDE_FINO
+        celda.alignment = ALINEACION_CENTRO
+
+    ws.cell(
+        row=fila_total,
+        column=1,
+    ).alignment = ALINEACION_DERECHA
+
+    ws.cell(fila_total, 16).number_format = "0.00"
+    ws.cell(fila_total, 17).number_format = "0.00"
 
     # =========================
     # ANCHOS
     # =========================
-        anchos = {
-            "A": 14,
-            "B": 32,
-            "C": 24,
-            "D": 20,
-            "E": 13,
-            "F": 10,
-            "G": 11,
-            "H": 12,
-            "I": 15,
-            "J": 12,
-            "K": 11,
-            "L": 16,
-            "M": 17,
-            "N": 13,
-        }
+    anchos = {
+        "A": 14,
+        "B": 32,
+        "C": 24,
+        "D": 20,
+        "E": 14,
+        "F": 9,
+        "G": 12,
+        "H": 15,
+        "I": 11,
+        "J": 10,
+        "K": 10,
+        "L": 10,
+        "M": 14,
+        "N": 10,
+        "O": 16,
+        "P": 17,
+        "Q": 13,
+    }
 
-        for columna, ancho in anchos.items():
-            ws.column_dimensions[columna].width = ancho
+    for columna, ancho in anchos.items():
+        ws.column_dimensions[columna].width = ancho
 
     # =========================
     # IMPRESIÓN
     # =========================
-        configurar_impresion(
-            ws=ws,
-            fila_encabezado=fila_encabezado,
-            ultima_columna=ultima_columna,
-            ultima_fila=fila_total,
-        )
+    configurar_impresion(
+        ws=ws,
+        fila_encabezado=fila_encabezado,
+        ultima_columna=ultima_columna,
+        ultima_fila=fila_total,
+    )
 
-        return crear_respuesta_excel(
-            workbook=wb,
-            nombre_archivo="resumen_pre_nomina.xlsx",
-        )
+    return crear_respuesta_excel(
+        workbook=wb,
+        nombre_archivo="resumen_pre_nomina.xlsx",
+    )

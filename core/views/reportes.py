@@ -83,7 +83,8 @@ def estado_dia(request):
             "salida": resultado["salida"],
             "horas": resultado["horas_trabajadas"],
             "estado": estado,
-            "incidencias": resultado["incidencias"],
+            "incidencia": resultado.get("incidencia"),
+            "tipo_incidencia": resultado.get("tipo_incidencia", ""),
             "extra_inicio": extra_inicio.hora if extra_inicio else None,
             "extra_fin": extra_fin.hora if extra_fin else None,
         })

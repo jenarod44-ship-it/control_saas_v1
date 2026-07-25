@@ -5,6 +5,8 @@ from core.models import Incidencia
 from django.utils import timezone
 from core.utils.asistencia import debe_generar_falta
 from datetime import datetime
+from core.utils.asistencia import calcular_estado_asistencia
+
 
 
 def obtener_tiempo_extra(asistencia):

@@ -167,6 +167,8 @@ def checador(request):
             return render(request, "control/checador.html", {
                 "mensaje": "Ingrese número de empleado"
             })
+        
+        from core.utils.laboral import es_dia_laboral
 
         empresa = request.empresa
 
@@ -183,6 +185,23 @@ def checador(request):
 
         hoy = timezone.localdate()
         now = timezone.localtime()
+
+        # ==========================================================
+        # BLOQUEAR CHECADOR NORMAL EN DÍA NO LABORAL
+        # ==========================================================
+        if (
+            empleado.control_horario
+            and not es_dia_laboral(empleado, hoy)
+        ):
+            messages.warning(
+                request,
+                (
+                    f"Hoy no es un día laboral para {empleado.nombre}. "
+                    "Si trabajará hoy, debe registrar su jornada en Tiempo Extra."
+                ),
+            )
+
+            return redirect("checador")
 
         incidencia_dia = IncidenciaDia.objects.filter(
             empleado=empleado,

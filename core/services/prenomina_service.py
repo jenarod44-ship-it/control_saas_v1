@@ -6,6 +6,8 @@ from nucleo.models import Empleado
 from django.utils import timezone
 from core.calculadora import CalculadoraAsistencia
 from core.utils.laboral import es_dia_laboral
+from core.utils.asistencia import calcular_estado_asistencia
+from datetime import datetime
 
 
 class ResumenPrenomina:
@@ -118,10 +120,16 @@ class ResumenPrenomina:
             "empleado__numero_empleado",
             "fecha",
         )
+    
+  
 
     def generar(self):
         if not self.fecha_inicio or not self.fecha_fin:
             return []
+        
+        dias_periodo = (
+            self.fecha_fin - self.fecha_inicio
+        ).days + 1
 
         empleados = list(self._obtener_empleados())
         empleados_ids = {empleado.id for empleado in empleados}
@@ -197,60 +205,178 @@ class ResumenPrenomina:
                 empleado.id
             ]
 
-            faltas = 0
+            tiempos_extra_empleado = tiempos_extra_por_empleado[
+                empleado.id
+            ]
 
-    # ==========================
-    # SALIDAS CON PERMISO
-    # ==========================
-
-            salidas_permiso = sum(
-                1
-                for movimiento in movimientos_empleado
-                if movimiento.tipo == "SALIDA_PERMISO"
+            tiempo_extra = sum(
+                registro.horas or 0
+                for registro in tiempos_extra_empleado
             )
 
-    # ==========================
-    # HORAS TRABAJADAS
-    # ==========================
+    # ==========================================================
+    # ÍNDICES POR FECHA
+    # ==========================================================
+            asistencias_por_fecha = {
+                asistencia.fecha: asistencia
+                for asistencia in asistencias_empleado
+            }
 
+            incidencias_por_fecha = {
+                incidencia.fecha: incidencia
+                for incidencia in incidencias_empleado
+            }
+
+    # ==========================================================
+    # CONTADORES DEL PERÍODO
+    # ==========================================================
+            dias_laborables_periodo = 0
+            dias_laborados = 0
+            faltas = 0
+            retardos = 0
+
+            vacaciones = 0
+            incapacidades = 0
+            descansos = 0
+            permisos = 0
+
+            incompletos = 0
+            irregulares = 0
+            pendientes = 0
+            no_laborales = 0
+            futuros = 0
+            sin_turno = 0
+            sin_control = 0
+
+            salidas_permiso = 0
             horas_trabajadas = 0
 
-            for asistencia in asistencias_empleado:
+            detalle_dias = []
 
-                movimientos_asistencia = movimientos_por_asistencia[
-                    asistencia.id
-                ]
+    # No se evalúan como falta fechas posteriores a hoy.
+            hoy = timezone.localdate()
+            fecha_limite = min(
+                self.fecha_fin,
+                hoy,
+            )
 
-                calculadora = CalculadoraAsistencia(
-                    empleado,
-                    asistencia.fecha,
-                    movimientos_asistencia,
+            fecha_actual = self.fecha_inicio
+
+    # ==========================================================
+    # MOTOR DIARIO ÚNICO
+    # ==========================================================
+            while fecha_actual <= fecha_limite:
+
+                asistencia_dia = asistencias_por_fecha.get(
+                    fecha_actual
                 )
 
-                resultado = calculadora.calcular()
-                horas = resultado.get("horas_trabajadas")
+                incidencia_dia = incidencias_por_fecha.get(
+                    fecha_actual
+                )
 
-                if isinstance(horas, (int, float)):
-                    horas_trabajadas += horas
+                if asistencia_dia:
+                    movimientos_dia = movimientos_por_asistencia[
+                        asistencia_dia.id
+                    ]
+                else:
+                    movimientos_dia = []
 
-            horas_trabajadas = round(horas_trabajadas, 2)
+                calculadora = CalculadoraAsistencia(
+                    empleado=empleado,
+                    fecha=fecha_actual,
+                    movimientos=movimientos_dia,
+                    asistencia=asistencia_dia,
+                    incidencia_dia=incidencia_dia,
+                )
 
-    # ==========================
-    # TIEMPO EXTRA
-    # ==========================
+                resultado_dia = calculadora.calcular()
+                detalle_dias.append(resultado_dia)
 
+                estado = resultado_dia["estado"]
+
+        # Día laboral según el motor.
+                if resultado_dia["es_laborable"]:
+                    dias_laborables_periodo += 1
+
+        # Asistencia real.
+                if resultado_dia["es_dia_laborado"]:
+                    dias_laborados += 1
+
+                if resultado_dia["es_retardo"]:
+                    retardos += 1
+
+                if resultado_dia["es_falta"]:
+                    faltas += 1
+
+        # Horas y permisos.
+                horas_trabajadas += (
+                    resultado_dia["horas_trabajadas"] or 0
+                )
+
+                salidas_permiso += (
+                    resultado_dia["salidas_permiso"] or 0
+                )
+
+        # Incidencias laborales.
+                if estado == "VACACIONES":
+                    vacaciones += 1
+
+                elif estado == "INCAPACIDAD":
+                    incapacidades += 1
+
+                elif estado == "DESCANSO":
+                    descansos += 1
+
+                elif estado == "PERMISO":
+                    permisos += 1
+
+        # Estados que requieren revisión.
+                elif estado == "INCOMPLETO":
+                    incompletos += 1
+
+                elif estado == "IRREGULAR":
+                    irregulares += 1
+
+                elif estado == "PENDIENTE":
+                    pendientes += 1
+
+                elif estado == "NO_LABORAL":
+                    no_laborales += 1
+
+                elif estado == "FUTURO":
+                    futuros += 1
+
+                elif estado == "SIN_TURNO":
+                    sin_turno += 1
+
+                elif estado == "SIN_CONTROL":
+                    sin_control += 1
+
+                fecha_actual += timedelta(days=1)
+
+            horas_trabajadas = round(
+                horas_trabajadas,
+                2,
+            )
+
+                # ==========================================================
+            # TIEMPO EXTRA
+            # ==========================================================
+            # La fuente oficial es TiempoExtra, no Movimiento.
             tiempo_extra = 0
 
             for asistencia in asistencias_empleado:
 
-                movimientos_asistencia = movimientos_por_asistencia[
-                    asistencia.id
-                ]
+                movimientos_dia = movimientos_por_asistencia.get(
+                    asistencia.id,
+                    []
+                )
 
                 inicio_extra = None
                 fin_extra = None
 
-                for movimiento in movimientos_asistencia:
+                for movimiento in movimientos_dia:
 
                     if movimiento.tipo == "INICIO_TIEMPO_EXTRA":
                         inicio_extra = movimiento.hora
@@ -258,134 +384,37 @@ class ResumenPrenomina:
                     elif movimiento.tipo == "FIN_TIEMPO_EXTRA":
                         fin_extra = movimiento.hora
 
-                if not inicio_extra or not fin_extra:
-                    continue
+                if inicio_extra and fin_extra:
 
-                fecha_hora_inicio = datetime.combine(
-                    asistencia.fecha,
-                    inicio_extra,
-                )
+                    t_inicio = datetime.combine(
+                        asistencia.fecha,
+                        inicio_extra
+                    )
 
-                fecha_hora_fin = datetime.combine(
-                    asistencia.fecha,
-                    fin_extra,
-                )
+                    t_fin = datetime.combine(
+                        asistencia.fecha,
+                        fin_extra
+                    )
 
-                total_minutos = int(
-                    (
-                        fecha_hora_fin
-                        - fecha_hora_inicio
-                    ).total_seconds() / 60
-                )
+                    diff = t_fin - t_inicio
 
-                horas_base = total_minutos // 60
-                minutos_restantes = total_minutos % 60
+                    total_minutos = int(
+                        diff.total_seconds() / 60
+                    )
 
-                if minutos_restantes >= 45:
-                    horas_base += 1
+                    horas_base = total_minutos // 60
+                    minutos = total_minutos % 60
 
-                tiempo_extra += horas_base
+                    if minutos >= 45:
+                        horas_final = horas_base + 1
+                    else:
+                        horas_final = horas_base
 
-            asistencias_por_fecha = {
-                asistencia.fecha: asistencia
-                for asistencia in asistencias_empleado
-            }
+                    tiempo_extra += horas_final
 
-            fechas_con_incidencia = {
-                incidencia.fecha
-                for incidencia in incidencias_empleado
-            }
-
-            hoy = timezone.localdate()
-            fecha_limite = min(self.fecha_fin, hoy)
-            fecha_actual = self.fecha_inicio
-
-            if empleado.control_horario and empleado.turno:
-
-                while fecha_actual <= fecha_limite:
-
-                    if not es_dia_laboral(empleado, fecha_actual):
-                        fecha_actual += timedelta(days=1)
-                        continue
-
-                    if fecha_actual in fechas_con_incidencia:
-                        fecha_actual += timedelta(days=1)
-                        continue
-
-                    asistencia_dia = asistencias_por_fecha.get(fecha_actual)
-
-                    if asistencia_dia and asistencia_dia.hora_entrada:
-                        fecha_actual += timedelta(days=1)
-                        continue
-
-                    if fecha_actual == hoy:
-                        limite_entrada = (
-                            datetime.combine(
-                                fecha_actual,
-                                empleado.turno.hora_entrada,
-                            )
-                            + timedelta(
-                                minutes=empleado.turno.tolerancia_minutos
-                            )
-                        ).time()
-
-                        if timezone.localtime().time() <= limite_entrada:
-                            fecha_actual += timedelta(days=1)
-                            continue
-
-                    faltas += 1
-                    fecha_actual += timedelta(days=1)
-
-            dias_laborados = sum(
-                1
-                for asistencia in asistencias_empleado
-                if asistencia.hora_entrada
-            )
-
-            retardos = 0
-
-            if empleado.control_horario and empleado.turno:
-                for asistencia in asistencias_empleado:
-                    if not asistencia.hora_entrada:
-                        continue
-
-                    limite_entrada = (
-                        datetime.combine(
-                            asistencia.fecha,
-                            empleado.turno.hora_entrada,
-                        )
-                        + timedelta(
-                            minutes=empleado.turno.tolerancia_minutos
-                        )
-                    ).time()
-
-                    if asistencia.hora_entrada > limite_entrada:
-                        retardos += 1
-
-            vacaciones = sum(
-                1
-                for incidencia in incidencias_empleado
-                if incidencia.tipo == "VACACIONES"
-            )
-
-            incapacidades = sum(
-                1
-                for incidencia in incidencias_empleado
-                if incidencia.tipo == "INCAPACIDAD"
-            )
-
-            descansos = sum(
-                1
-                for incidencia in incidencias_empleado
-                if incidencia.tipo == "DESCANSO"
-            )
-
-            permisos = sum(
-                1
-                for incidencia in incidencias_empleado
-                if incidencia.tipo == "PERMISO"
-            )
-
+            # ==========================================================
+            # TOTALES DE INCIDENCIAS
+            # ==========================================================
             total_incidencias = (
                 vacaciones
                 + incapacidades
@@ -393,7 +422,33 @@ class ResumenPrenomina:
                 + permisos
             )
 
-            
+            # ==========================================================
+            # POLÍTICA PROVISIONAL DE DÍAS A PAGAR
+            # ==========================================================
+            dias_a_pagar = dias_laborados
+
+            # ==========================================================
+            # TOTAL DE FECHAS CLASIFICADAS
+            # ==========================================================
+            total_fila = (
+                dias_laborados
+                + faltas
+                + vacaciones
+                + incapacidades
+                + descansos
+                + permisos
+                + incompletos
+                + irregulares
+                + pendientes
+                + no_laborales
+                + sin_turno
+            )
+
+            dias_evaluados = (
+                fecha_limite - self.fecha_inicio
+            ).days + 1
+
+            diferencia = dias_evaluados - total_fila
 
             resultados.append({
                 "empleado_obj": empleado,
@@ -410,7 +465,14 @@ class ResumenPrenomina:
                     else "Sin turno"
                 ),
                 "control_horario": empleado.control_horario,
+
+                "dias_periodo": dias_periodo,
+                "dias_laborables": dias_laborables_periodo,
                 "dias_laborados": dias_laborados,
+                "dias_a_pagar": dias_a_pagar,
+                "total_fila": total_fila,
+                "diferencia": diferencia,
+
                 "faltas": faltas,
                 "retardos": retardos,
                 "vacaciones": vacaciones,
@@ -418,18 +480,17 @@ class ResumenPrenomina:
                 "descansos": descansos,
                 "permisos": permisos,
                 "incidencias": total_incidencias,
+
                 "salidas_permiso": salidas_permiso,
                 "horas_trabajadas": horas_trabajadas,
                 "tiempo_extra": tiempo_extra,
+
                 "observaciones": "",
+
                 "_asistencias": asistencias_empleado,
                 "_incidencias": incidencias_empleado,
-                "_movimientos": movimientos_por_empleado[
-                    empleado.id
-                ],
-                "_tiempos_extra": tiempos_extra_por_empleado[
-                    empleado.id
-                ],
+                "_movimientos": movimientos_empleado,
+                "_tiempos_extra": tiempos_extra_empleado,
             })
 
         return resultados

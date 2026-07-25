@@ -7,6 +7,7 @@ from core.models import IncidenciaDia
 from core.decorators import solo_operativo
 from core.services.asistencia_service import calcular_horas_extra_por_rango
 from datetime import datetime, timedelta
+from core.utils.asistencia import calcular_estado_asistencia
 
 
 @solo_operativo

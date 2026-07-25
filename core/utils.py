@@ -5,6 +5,10 @@ from core.models import Incidencia
 from django.utils import timezone
 from asistencia.models import Asistencia, Movimiento, TiempoExtra
 from asistencia.models import Movimiento
+from datetime import datetime, timedelta
+from core.models import Incidencia, IncidenciaDia
+from core.utils import calcular_estado_asistencia
+
 
 def calcular_incidencias_asistencia(empleado, fecha):
     incidencias = []
@@ -35,11 +39,40 @@ from datetime import datetime, timedelta
 
 def calcular_estado_asistencia(empleado, fecha):
 
-    # 🔥 validar si es día laboral
+    # =========================
+    # 1. REVISAR INCIDENCIA
+    # =========================
+    incidencia_dia = IncidenciaDia.objects.filter(
+        empleado=empleado,
+        fecha=fecha,
+    ).first()
+
+    if incidencia_dia:
+        return "INCIDENCIA"
+
+    # Respaldo por si existe la incidencia por rango,
+    # pero todavía no existe su registro en IncidenciaDia.
+    incidencia_rango = Incidencia.objects.filter(
+        empleado=empleado,
+        fecha_inicio__lte=fecha,
+        fecha_fin__gte=fecha,
+    ).first()
+
+    if incidencia_rango:
+        return "INCIDENCIA"
+
+    # =========================
+    # 2. DÍA NO LABORAL
+    # =========================
     if not debe_generar_falta(empleado, fecha):
         return "NO_LABORAL"
 
-    asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
+    # =========================
+    # 3. ASISTENCIA
+    # =========================
+    asistencia = empleado.asistencia_set.filter(
+        fecha=fecha
+    ).first()
 
     if not asistencia:
         return "FALTA"
@@ -52,35 +85,62 @@ def calcular_estado_asistencia(empleado, fecha):
     if not turno:
         return "SIN TURNO"
 
-    movimientos = Movimiento.objects.filter(asistencia=asistencia)
+    movimientos = Movimiento.objects.filter(
+        asistencia=asistencia
+    )
 
-    tiene_salida_permiso = movimientos.filter(tipo="SALIDA_PERMISO").exists()
-    tiene_regreso = movimientos.filter(tipo="REGRESO").exists()
-    tiene_tiempo_extra = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").exists()
+    tiene_salida_permiso = movimientos.filter(
+        tipo="SALIDA_PERMISO"
+    ).exists()
 
-    # 🔥 NUEVO: tiempo extra por día
+    tiene_regreso = movimientos.filter(
+        tipo="REGRESO"
+    ).exists()
+
+    tiene_tiempo_extra = movimientos.filter(
+        tipo="INICIO_TIEMPO_EXTRA"
+    ).exists()
+
+    # =========================
+    # 4. TIEMPO EXTRA
+    # =========================
     if es_tiempo_extra(empleado, fecha):
         return "TIEMPO_EXTRA"
 
+    # =========================
+    # 5. ASISTENCIA INCOMPLETA
+    # =========================
     if not asistencia.hora_salida:
 
         if tiene_salida_permiso and not tiene_regreso:
             return "PERMISO"
 
         if tiene_tiempo_extra:
-            return "TIEMPO EXTRA"
+            return "TIEMPO_EXTRA"
 
         return "INCOMPLETO"
 
-    entrada_real = datetime.combine(fecha, asistencia.hora_entrada)
-    entrada_turno = datetime.combine(fecha, turno.hora_entrada)
+    # =========================
+    # 6. PUNTUALIDAD
+    # =========================
+    entrada_real = datetime.combine(
+        fecha,
+        asistencia.hora_entrada
+    )
 
-    tolerancia = timedelta(minutes=10)
+    entrada_turno = datetime.combine(
+        fecha,
+        turno.hora_entrada
+    )
+
+    tolerancia = timedelta(
+        minutes=turno.tolerancia_minutos
+    )
 
     if entrada_real <= entrada_turno + tolerancia:
         return "OK"
-    else:
-        return "RETARDO"
+
+    return "RETARDO"
 
     
 
