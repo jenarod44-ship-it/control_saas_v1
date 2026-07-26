@@ -170,12 +170,12 @@
                                 Empleado
                             </th>
 
-                            <th colspan="8"
+                            <th colspan="10"
                                 class="text-center align-middle">
                                 Cuadre del período
                             </th>
 
-                            <th colspan="5"
+                            <th colspan="4"
                                 class="text-center align-middle">
                                 Información adicional
                             </th>
@@ -200,7 +200,11 @@
                             </th>
 
                             <th class="text-center">
-                                Días a pagar
+                                Días trabajados
+                            </th>
+
+                            <th class="text-center">
+                                Días de descanso
                             </th>
 
                             <th class="text-center">
@@ -216,11 +220,15 @@
                             </th>
 
                             <th class="text-center">
-                                Descansos
+                                Licencias
                             </th>
 
                             <th class="text-center">
                                 Permisos
+                            </th>
+
+                            <th class="text-center">
+                                Días a pagar
                             </th>
 
                             <th class="text-center">
@@ -229,10 +237,6 @@
 
                             <th class="text-center">
                                 Período
-                            </th>
-
-                            <th class="text-center">
-                                Días laborados
                             </th>
 
                             <th class="text-center">
@@ -279,14 +283,19 @@
                                     {{ r.turno }}
                                 </td>
 
-                                <!-- CUADRE -->
+                                <!-- CUADRE DEL PERÍODO -->
 
+                                <!-- DÍAS TRABAJADOS -->
                                 <td class="text-center">
-                                    <span class="badge bg-success">
-                                        {{ r.dias_a_pagar }}
-                                    </span>
+                                    {{ r.dias_laborados }}
                                 </td>
 
+                                <!-- DÍAS DE DESCANSO -->
+                                <td class="text-center">
+                                    {{ r.no_laborales }}
+                                </td>
+
+                                <!-- FALTAS -->
                                 <td class="text-center">
                                     {% if r.faltas > 0 %}
                                         <span class="badge bg-danger">
@@ -297,6 +306,7 @@
                                     {% endif %}
                                 </td>
 
+                                <!-- VACACIONES -->
                                 <td class="text-center">
                                     {% if r.vacaciones > 0 %}
                                         <span class="badge bg-info text-dark">
@@ -307,6 +317,7 @@
                                     {% endif %}
                                 </td>
 
+                                <!-- INCAPACIDADES -->
                                 <td class="text-center">
                                     {% if r.incapacidades > 0 %}
                                         <span class="badge bg-warning text-dark">
@@ -317,6 +328,7 @@
                                     {% endif %}
                                 </td>
 
+                                <!-- LICENCIAS -->
                                 <td class="text-center">
                                     {% if r.descansos > 0 %}
                                         <span class="badge bg-secondary">
@@ -327,6 +339,7 @@
                                     {% endif %}
                                 </td>
 
+                                <!-- PERMISOS -->
                                 <td class="text-center">
                                     {% if r.permisos > 0 %}
                                         <span class="badge bg-primary">
@@ -337,7 +350,14 @@
                                     {% endif %}
                                 </td>
 
-                                <!-- TOTAL DE LA FILA -->
+                                <!-- DÍAS A PAGAR -->
+                                <td class="text-center">
+                                    <span class="badge bg-success">
+                                        {{ r.dias_a_pagar }}
+                                    </span>
+                                </td>
+
+                                <!-- DÍAS CLASIFICADOS -->
                                 <td class="text-center">
                                     {% if r.diferencia == 0 %}
                                         <span class="badge bg-success fs-6">
@@ -350,7 +370,7 @@
                                     {% endif %}
                                 </td>
 
-                                <!-- TOTAL DEL PERÍODO -->
+                                <!-- PERÍODO -->
                                 <td class="text-center">
                                     <span class="badge bg-dark fs-6">
                                         {{ r.dias_periodo }}
@@ -359,10 +379,7 @@
 
                                 <!-- INFORMACIÓN ADICIONAL -->
 
-                                <td class="text-center">
-                                    {{ r.dias_laborados }}
-                                </td>
-
+                                <!-- RETARDOS -->
                                 <td class="text-center">
                                     {% if r.retardos > 0 %}
                                         <span class="badge bg-warning text-dark">
@@ -373,14 +390,17 @@
                                     {% endif %}
                                 </td>
 
+                                <!-- SALIDAS PERMISO -->
                                 <td class="text-center">
                                     {{ r.salidas_permiso }}
                                 </td>
 
+                                <!-- HORAS TRABAJADAS -->
                                 <td class="text-center">
                                     {{ r.horas_trabajadas|floatformat:2 }}
                                 </td>
 
+                                <!-- TIEMPO EXTRA -->
                                 <td class="text-center">
                                     {{ r.tiempo_extra }}
                                 </td>
@@ -388,7 +408,6 @@
                             </tr>
 
                         {% empty %}
-
                             <tr>
                                 <td colspan="17"
                                     class="text-center text-muted py-4">

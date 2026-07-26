@@ -238,7 +238,7 @@ def checador(request):
                 ),
             )
 
-            return redirect("checador")
+            return redirect("asistencia:checador")
 
         incidencia_dia = IncidenciaDia.objects.filter(
             empleado=empleado,

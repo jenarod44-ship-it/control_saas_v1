@@ -2098,8 +2098,8 @@ def exportar_pre_nomina_excel(request):
 
     fila_encabezado = 6
 
-    # 17 columnas: A hasta Q
-    ultima_columna = "Q"
+    # 17 columnas: A hasta R
+    ultima_columna = "R"
 
     escribir_encabezado_reporte(
         ws=ws,
@@ -2120,17 +2120,18 @@ def exportar_pre_nomina_excel(request):
         "Turno",
 
         # Cuadre del período
-        "Días a Pagar",
+        "Días Trabajados",
+        "Días de Descanso",
         "Faltas",
         "Vacaciones",
         "Incapacidades",
-        "Descansos",
+        "Licencias",
+        "Permisos",
+        "Días a Pagar",
         "Días Clasificados",
-        "Total",
         "Período",
 
         # Información adicional
-        "Días Laborados",
         "Retardos",
         "Salidas Permiso",
         "Horas Trabajadas",
@@ -2147,15 +2148,16 @@ def exportar_pre_nomina_excel(request):
     # TOTALES
     # =========================
     totales = {
-        "dias_a_pagar": 0,
+        "dias_laborados": 0,
+        "no_laborales": 0,
         "faltas": 0,
         "vacaciones": 0,
         "incapacidades": 0,
         "descansos": 0,
         "permisos": 0,
+        "dias_a_pagar": 0,
         "total_fila": 0,
         "dias_periodo": 0,
-        "dias_laborados": 0,
         "retardos": 0,
         "salidas_permiso": 0,
         "horas_trabajadas": 0,
@@ -2175,16 +2177,17 @@ def exportar_pre_nomina_excel(request):
             registro["departamento"],
             registro["turno"],
 
-            registro["dias_a_pagar"],
+            registro["dias_laborados"],
+            registro["no_laborales"],
             registro["faltas"],
             registro["vacaciones"],
             registro["incapacidades"],
-            registro["descansos"],
+            registro["descansos"],     # visible como Licencias
             registro["permisos"],
+            registro["dias_a_pagar"],
             registro["total_fila"],
             registro["dias_periodo"],
 
-            registro["dias_laborados"],
             registro["retardos"],
             registro["salidas_permiso"],
             registro["horas_trabajadas"],
@@ -2227,58 +2230,46 @@ def exportar_pre_nomina_excel(request):
             ).alignment = ALINEACION_CENTRO
 
         # Horas trabajadas y tiempo extra
-        ws.cell(fila, 16).number_format = "0.00"
         ws.cell(fila, 17).number_format = "0.00"
+        ws.cell(fila, 18).number_format = "0.00"
 
         # =========================
         # COLORES
         # =========================
 
-        # Días a pagar
         if registro["dias_a_pagar"] > 0:
-            ws.cell(fila, 5).fill = RELLENO_OK
+            ws.cell(fila, 12).fill = RELLENO_OK
 
-        # Faltas
         if registro["faltas"] > 0:
-            ws.cell(fila, 6).fill = RELLENO_ERROR
+            ws.cell(fila, 7).fill = RELLENO_ERROR
 
-        # Vacaciones
         if registro["vacaciones"] > 0:
-            ws.cell(fila, 7).fill = RELLENO_INFORMATIVO
+            ws.cell(fila, 8).fill = RELLENO_INFORMATIVO
 
-        # Incapacidades
         if registro["incapacidades"] > 0:
-            ws.cell(fila, 8).fill = RELLENO_ERROR
+            ws.cell(fila, 9).fill = RELLENO_ERROR
 
-        # Descansos
         if registro["descansos"] > 0:
-            ws.cell(fila, 9).fill = RELLENO_GRIS
+            ws.cell(fila, 10).fill = RELLENO_GRIS
 
-        # Permisos
         if registro["permisos"] > 0:
-            ws.cell(fila, 10).fill = RELLENO_ALERTA
+            ws.cell(fila, 11).fill = RELLENO_ALERTA
 
-        # Total de la fila
         if registro.get("diferencia", 0) == 0:
-            ws.cell(fila, 11).fill = RELLENO_OK
+            ws.cell(fila, 13).fill = RELLENO_OK
         else:
-            ws.cell(fila, 11).fill = RELLENO_ERROR
+            ws.cell(fila, 13).fill = RELLENO_ERROR
 
-        # Período
-        ws.cell(fila, 12).fill = RELLENO_GRIS
+        ws.cell(fila, 14).fill = RELLENO_GRIS
 
-        # Retardos
         if registro["retardos"] > 0:
-            ws.cell(fila, 14).fill = RELLENO_ALERTA
+            ws.cell(fila, 15).fill = RELLENO_ALERTA
 
-        # Salidas con permiso
         if registro["salidas_permiso"] > 0:
-            ws.cell(fila, 15).fill = RELLENO_INFORMATIVO
+            ws.cell(fila, 16).fill = RELLENO_INFORMATIVO
 
-        # Tiempo extra
         if registro["tiempo_extra"] > 0:
-            ws.cell(fila, 17).fill = RELLENO_OK
-
+            ws.cell(fila, 18).fill = RELLENO_OK
         # =========================
         # ACUMULAR TOTALES
         # =========================
@@ -2310,15 +2301,16 @@ def exportar_pre_nomina_excel(request):
     )
 
     valores_totales = [
-        totales["dias_a_pagar"],
+        totales["dias_laborados"],
+        totales["no_laborales"],
         totales["faltas"],
         totales["vacaciones"],
         totales["incapacidades"],
         totales["descansos"],
         totales["permisos"],
+        totales["dias_a_pagar"],
         totales["total_fila"],
         totales["dias_periodo"],
-        totales["dias_laborados"],
         totales["retardos"],
         totales["salidas_permiso"],
         round(totales["horas_trabajadas"], 2),
@@ -2335,7 +2327,7 @@ def exportar_pre_nomina_excel(request):
             value=valor,
         )
 
-    for columna in range(1, 18):
+    for columna in range(1, 19):
 
         celda = ws.cell(
             row=fila_total,
@@ -2352,8 +2344,8 @@ def exportar_pre_nomina_excel(request):
         column=1,
     ).alignment = ALINEACION_DERECHA
 
-    ws.cell(fila_total, 16).number_format = "0.00"
     ws.cell(fila_total, 17).number_format = "0.00"
+    ws.cell(fila_total, 18).number_format = "0.00"
 
     # =========================
     # ANCHOS
@@ -2363,19 +2355,20 @@ def exportar_pre_nomina_excel(request):
         "B": 32,
         "C": 24,
         "D": 20,
-        "E": 14,
-        "F": 9,
-        "G": 12,
-        "H": 15,
-        "I": 11,
-        "J": 10,
+        "E": 15,
+        "F": 16,
+        "G": 9,
+        "H": 12,
+        "I": 15,
+        "J": 11,
         "K": 10,
-        "L": 10,
-        "M": 14,
+        "L": 14,
+        "M": 17,
         "N": 10,
-        "O": 16,
-        "P": 17,
-        "Q": 13,
+        "O": 10,
+        "P": 16,
+        "Q": 17,
+        "R": 13,
     }
 
     for columna, ancho in anchos.items():

@@ -442,7 +442,7 @@ class ResumenPrenomina:
             # ==========================================================
             # POLÍTICA PROVISIONAL DE DÍAS A PAGAR
             # ==========================================================
-            dias_a_pagar = dias_laborados
+            dias_a_pagar = dias_laborados + no_laborales
 
             # ==========================================================
             # TOTAL DE FECHAS CLASIFICADAS
@@ -505,6 +505,7 @@ class ResumenPrenomina:
                 "incapacidades": incapacidades,
                 "descansos": descansos,
                 "permisos": permisos,
+                "no_laborales": no_laborales,
                 "incidencias": total_incidencias,
 
                 "salidas_permiso": salidas_permiso,
