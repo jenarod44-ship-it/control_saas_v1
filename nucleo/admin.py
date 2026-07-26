@@ -34,25 +34,29 @@ class DepartamentoAdmin(admin.ModelAdmin):
 # ========================
 # EMPLEADO
 # ========================
+from django.contrib import admin
+from .models import Empleado
+
+
 @admin.register(Empleado)
 class EmpleadoAdmin(admin.ModelAdmin):
     list_display = (
         "numero_empleado",
         "nombre",
-        "empresa",
         "departamento",
         "turno",
-        "control_horario",
+        "fecha_ingreso",
         "activo",
-        "costo_hora",
+    )
+
+    list_filter = (
+        "activo",
+        "departamento",
     )
 
     search_fields = (
         "numero_empleado",
         "nombre",
-        "empresa__nombre",
-        "departamento__nombre",
-        "turno__nombre",
     )
 
     list_filter = (
@@ -74,6 +78,7 @@ class EmpleadoAdmin(admin.ModelAdmin):
                 "empresa",
                 "numero_empleado",
                 "nombre",
+                "fecha_ingreso",
                 "activo",
             )
         }),

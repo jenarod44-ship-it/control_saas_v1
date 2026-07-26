@@ -193,6 +193,20 @@ class ResumenPrenomina:
 
         for empleado in empleados:
 
+            # ==========================================================
+            # INICIO EFECTIVO DEL PERÍODO PARA ESTE EMPLEADO
+            # ==========================================================
+            fecha_inicio_empleado = self.fecha_inicio
+
+            if (
+                empleado.fecha_ingreso
+                and empleado.fecha_ingreso > fecha_inicio_empleado
+            ):
+                fecha_inicio_empleado = empleado.fecha_ingreso
+
+            # ==========================================================
+            # DATOS DEL EMPLEADO
+            # ==========================================================
             asistencias_empleado = asistencias_por_empleado[
                 empleado.id
             ]
@@ -214,6 +228,7 @@ class ResumenPrenomina:
                 for registro in tiempos_extra_empleado
             )
 
+            
     # ==========================================================
     # ÍNDICES POR FECHA
     # ==========================================================
@@ -260,7 +275,7 @@ class ResumenPrenomina:
                 hoy,
             )
 
-            fecha_actual = self.fecha_inicio
+            fecha_actual = fecha_inicio_empleado
 
     # ==========================================================
     # MOTOR DIARIO ÚNICO
@@ -281,7 +296,7 @@ class ResumenPrenomina:
                     ]
                 else:
                     movimientos_dia = []
-
+                
                 calculadora = CalculadoraAsistencia(
                     empleado=empleado,
                     fecha=fecha_actual,
@@ -359,6 +374,8 @@ class ResumenPrenomina:
                 horas_trabajadas,
                 2,
             )
+
+           
 
                 # ==========================================================
             # TIEMPO EXTRA
@@ -445,8 +462,17 @@ class ResumenPrenomina:
             )
 
             dias_evaluados = (
-                fecha_limite - self.fecha_inicio
+                fecha_limite - fecha_inicio_empleado
             ).days + 1
+
+            diferencia = dias_evaluados - total_fila
+
+            if fecha_inicio_empleado > fecha_limite:
+                dias_evaluados = 0
+            else:
+                dias_evaluados = (
+                    fecha_limite - fecha_inicio_empleado
+                ).days + 1
 
             diferencia = dias_evaluados - total_fila
 
@@ -466,7 +492,7 @@ class ResumenPrenomina:
                 ),
                 "control_horario": empleado.control_horario,
 
-                "dias_periodo": dias_periodo,
+                "dias_periodo": dias_evaluados,
                 "dias_laborables": dias_laborables_periodo,
                 "dias_laborados": dias_laborados,
                 "dias_a_pagar": dias_a_pagar,

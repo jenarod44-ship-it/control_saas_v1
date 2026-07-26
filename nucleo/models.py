@@ -51,6 +51,12 @@ class Empleado(models.Model):
         blank=True
     )
 
+    fecha_ingreso = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de ingreso",
+    )
+
     costo_hora = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     objects = EmpresaManager()   # 👈 🔥 ESTE ES EL IMPORTANTE
