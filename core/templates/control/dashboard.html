@@ -2,142 +2,383 @@
 
 {% block content %}
 
+<div class="container-fluid py-3">
+
+    <!-- ENCABEZADO -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">Panel de Control</h2>
+
+            <p class="text-muted mb-0">
+                Resumen operativo de la empresa
+                <strong>{{ empresa }}</strong>
+            </p>
+        </div>
+
+        <div class="mt-3 mt-md-0">
+            <a href="{% url 'core:estado_dia' %}"
+               class="btn btn-outline-primary">
+                <i class="bi bi-calendar-check me-1"></i>
+                Ver Estado del Día
+            </a>
+        </div>
+
+    </div>
 
 
-<h2 class="mt-3">Panel de Control</h2>
+    <!-- INDICADORES DEL DÍA -->
+    <div class="card border-0 shadow-sm mb-4">
 
-<p><strong>Empresa:</strong> {{ empresa }}</p>
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-speedometer2 me-2"></i>
+                Estado de hoy
+            </h5>
+        </div>
 
-<!-- 🔥 TARJETAS -->
-<div class="row g-3 mb-4">
+        <div class="card-body">
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-people-fill text-secondary fs-3"></i>
-<h6 class="mt-2">Total</h6>
-<h2 class="fw-bold text-secondary">{{ total_empleados }}</h2>
-</div>
-</div>
-</div>    
+            <div class="row g-3">
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-check-circle-fill text-success fs-3"></i>
-<h6 class="mt-2">Presentes</h6>
-<h2 class="fw-bold text-success">{{ presentes }}</h2>
-</div>
-</div>
-</div>
+                <!-- TOTAL -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-clock-fill text-warning fs-3"></i>
-<h6 class="mt-2">Retardos</h6>
-<h2 class="fw-bold text-warning">{{ retardos }}</h2>
-</div>
-</div>
-</div>
+                            <i class="bi bi-people-fill text-secondary fs-3"></i>
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-x-circle-fill text-danger fs-3"></i>
-<h6 class="mt-2">Faltas</h6>
-<h2 class="fw-bold text-danger">{{ faltas }}</h2>
-</div>
-</div>
-</div>
+                            <div class="text-muted small mt-2">
+                                Total empleados
+                            </div>
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-exclamation-triangle-fill text-primary fs-3"></i>
-<h6 class="mt-2">Incidencias</h6>
-<h2 class="fw-bold text-primary">{{ incidencias }}</h2>
-</div>
-</div>
-</div>
+                            <div class="display-6 fw-bold text-secondary">
+                                {{ total_empleados }}
+                            </div>
 
-<div class="col-md-2">
-<div class="card shadow border-0">
-<div class="card-body text-center">
-<i class="bi bi-hourglass-split text-dark fs-3"></i>
-<h6 class="mt-2">Tiempo Extra</h6>
-<h2 class="fw-bold text-dark">{{ tiempo_extra }}</h2>
-</div>
-</div>
-</div>
+                        </div>
+                    </div>
+                </div>
 
 
-</div>
+                <!-- PRESENTES -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
 
-<!-- 🔻 CONTENIDO ORIGINAL -->
-<div class="row mt-4">
+                            <i class="bi bi-person-check-fill text-success fs-3"></i>
 
-    <!-- REPORTES -->
-    <div class="col-md-6">
-        <div class="card shadow p-3">
+                            <div class="text-muted small mt-2">
+                                Presentes
+                            </div>
 
-            <h5>Reportes</h5>
+                            <div class="display-6 fw-bold text-success">
+                                {{ presentes }}
+                            </div>
 
-            <div class="d-grid gap-2">
+                        </div>
+                    </div>
+                </div>
 
-                <a href="{% url 'reportes:asistencia' %}" class="btn btn-outline-primary">📊 Asistencia</a>
-                <a href="{% url 'reportes:incidencias' %}" class="btn btn-outline-warning">⚠️ Incidencias</a>
-                <a href="{% url 'reportes:movimientos' %}" class="btn btn-outline-info">🔄 Movimientos</a>
-                <a href="{% url 'reportes:tiempos_extra' %}" class="btn btn-outline-success">⏱ Tiempo extra</a>
-                <a href="{% url 'reportes:permisos' %}" class="btn btn-outline-dark">📋 Permisos</a>
-                <a href="{% url 'reportes:pre_nomina' %}"
-                    class="btn btn-outline-secondary">
-                    🧾 Resumen Pre-Nómina
-                </a>
-                
+
+                <!-- RETARDOS -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
+
+                            <i class="bi bi-clock-history text-warning fs-3"></i>
+
+                            <div class="text-muted small mt-2">
+                                Retardos
+                            </div>
+
+                            <div class="display-6 fw-bold text-warning">
+                                {{ retardos }}
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- FALTAS -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
+
+                            <i class="bi bi-person-x-fill text-danger fs-3"></i>
+
+                            <div class="text-muted small mt-2">
+                                Faltas
+                            </div>
+
+                            <div class="display-6 fw-bold text-danger">
+                                {{ faltas }}
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- INCIDENCIAS -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
+
+                            <i class="bi bi-exclamation-triangle-fill text-primary fs-3"></i>
+
+                            <div class="text-muted small mt-2">
+                                Incidencias
+                            </div>
+
+                            <div class="display-6 fw-bold text-primary">
+                                {{ incidencias }}
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- TIEMPO EXTRA -->
+                <div class="col-6 col-md-4 col-xl-2">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body text-center">
+
+                            <i class="bi bi-hourglass-split text-dark fs-3"></i>
+
+                            <div class="text-muted small mt-2">
+                                Tiempo extra
+                            </div>
+
+                            <div class="display-6 fw-bold text-dark">
+                                {{ tiempo_extra }}
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
     </div>
 
-    <!-- ACCESOS -->
-    <div class="col-md-6">
-        <div class="card shadow p-3">
 
-            <h5>Accesos rápidos</h5>
+    <!-- OPERACIÓN DEL DÍA -->
+    <div class="card border-0 shadow-sm mb-4">
 
-            <div class="d-grid gap-2">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
 
-                <a href="{% url 'core:estado_dia' %}" class="btn btn-success">📅 Estado del día</a>
-                <a href="{% url 'nucleo:lista_incidencias' %}" class="btn btn-warning">⚠️ Incidencias</a>
-                <a href="/admin/nucleo/empleado/" class="btn btn-dark">👥 Empleados</a>
-                <a href="{% url 'reportes:reporte_nomina' %}" class="btn btn-success">
-                    💰 Nómina
-                </a>
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-lightning-charge-fill me-2"></i>
+                Operación del día
+            </h5>
+
+            <small class="text-muted">
+                Registro diario de asistencia, permisos y tiempo extra
+            </small>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <a href="{% url 'asistencia:checador' %}"
+                       class="btn btn-primary btn-lg w-100 h-100 py-3">
+
+                        <i class="bi bi-clock-fill me-2"></i>
+                        Checador
+
+                    </a>
+                </div>
+
+                <div class="col-md-4">
+                    <a href="{% url 'asistencia:permisos' %}"
+                       class="btn btn-warning btn-lg w-100 h-100 py-3">
+
+                        <i class="bi bi-door-open-fill me-2"></i>
+                        Permisos
+
+                    </a>
+                </div>
+
+                <div class="col-md-4">
+                    <a href="{% url 'asistencia:tiempo_extra' %}"
+                       class="btn btn-success btn-lg w-100 h-100 py-3">
+
+                        <i class="bi bi-plus-circle-fill me-2"></i>
+                        Tiempo Extra
+
+                    </a>
+                </div>
 
             </div>
 
         </div>
     </div>
 
-</div>
 
-<!-- BOTONES -->
-<div class="card shadow p-3 mt-4">
+    <!-- REPORTES Y ACCESOS -->
+    <div class="row g-4">
 
-    <h5>Operación del día</h5>
+        <!-- REPORTES -->
+        <div class="col-lg-7">
 
-    <div class="d-grid gap-2">
+            <div class="card border-0 shadow-sm h-100">
 
-        <a href="{% url 'asistencia:checador' %}" class="btn btn-primary">⏱ Checador</a>
-        <a href="{% url 'asistencia:permisos' %}" class="btn btn-warning">🔓 Permisos</a>
-        <a href="{% url 'asistencia:tiempo_extra' %}" class="btn btn-success">➕ Tiempo Extra</a>
+                <div class="card-header bg-white border-0 pt-3 pb-0">
+
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-bar-chart-fill me-2"></i>
+                        Reportes
+                    </h5>
+
+                    <small class="text-muted">
+                        Consulta y exportación de información
+                    </small>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="row g-2">
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:asistencia' %}"
+                               class="btn btn-outline-primary w-100 text-start">
+
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Asistencia
+
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:incidencias' %}"
+                               class="btn btn-outline-warning w-100 text-start">
+
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Incidencias
+
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:movimientos' %}"
+                               class="btn btn-outline-info w-100 text-start">
+
+                                <i class="bi bi-arrow-left-right me-2"></i>
+                                Movimientos
+
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:tiempos_extra' %}"
+                               class="btn btn-outline-success w-100 text-start">
+
+                                <i class="bi bi-hourglass-split me-2"></i>
+                                Tiempo Extra
+
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:permisos' %}"
+                               class="btn btn-outline-dark w-100 text-start">
+
+                                <i class="bi bi-door-open me-2"></i>
+                                Permisos
+
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="{% url 'reportes:pre_nomina' %}"
+                               class="btn btn-outline-secondary w-100 text-start">
+
+                                <i class="bi bi-receipt me-2"></i>
+                                Resumen Pre-Nómina
+
+                            </a>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ACCESOS RÁPIDOS -->
+        <div class="col-lg-5">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header bg-white border-0 pt-3 pb-0">
+
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-grid-fill me-2"></i>
+                        Accesos rápidos
+                    </h5>
+
+                    <small class="text-muted">
+                        Administración y consulta general
+                    </small>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="d-grid gap-2">
+
+                        <a href="{% url 'core:estado_dia' %}"
+                           class="btn btn-outline-success text-start">
+
+                            <i class="bi bi-calendar-day me-2"></i>
+                            Estado del Día
+
+                        </a>
+
+                        <a href="{% url 'nucleo:lista_incidencias' %}"
+                           class="btn btn-outline-warning text-start">
+
+                            <i class="bi bi-clipboard2-check me-2"></i>
+                            Registrar Incidencias
+
+                        </a>
+
+                        <a href="/admin/nucleo/empleado/"
+                           class="btn btn-outline-dark text-start">
+
+                            <i class="bi bi-people me-2"></i>
+                            Empleados
+
+                        </a>
+
+                        <a href="{% url 'reportes:reporte_nomina' %}"
+                           class="btn btn-outline-success text-start">
+
+                            <i class="bi bi-cash-stack me-2"></i>
+                            Nómina
+
+                        </a>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
 
     </div>
 
 </div>
+
 {% endblock %}
-
 
 
 

@@ -44,7 +44,7 @@ def estado_dia(request):
 
         calc = CalculadoraAsistencia(empleado, fecha, movimientos)
         resultado = calc.calcular()
-
+       
         # calc.guardar_incidencias()
 
         estado = resultado["estado"]
