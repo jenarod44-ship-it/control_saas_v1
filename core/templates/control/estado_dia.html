@@ -27,6 +27,8 @@
                         <th>No. empleado</th>
                         <th>Empleado</th>
                         <th>Entrada</th>
+                        <th>Permiso</th>
+                        <th>Regreso</th>
                         <th>Salida</th>
                         <th>Extra inicio</th>
                         <th>Extra fin</th>
@@ -40,12 +42,36 @@
 
                     <tr>
                         <td class="text-center">{{ forloop.counter }}</td>
-                        <td class="text-center">{{ r.empleado.numero_empleado }}</td>
+
+                        <td class="text-center">
+                            {{ r.empleado.numero_empleado }}
+                        </td>
+
                         <td>{{ r.empleado.nombre }}</td>
-                        <td class="text-center">{{ r.entrada|time:"H:i"|default_if_none:"—" }}</td>
-                        <td class="text-center">{{ r.salida|time:"H:i"|default_if_none:"—" }}</td>
-                        <td class="text-center">{{ r.extra_inicio|time:"H:i"|default_if_none:"—" }}</td>
-                        <td class="text-center">{{ r.extra_fin|time:"H:i"|default_if_none:"—" }}</td>
+
+                        <td class="text-center">
+                            {{ r.entrada|time:"H:i"|default_if_none:"—" }}
+                        </td>
+
+                        <td class="text-center">
+                            {{ r.permiso|time:"H:i"|default_if_none:"—" }}
+                        </td>
+
+                        <td class="text-center">
+                            {{ r.regreso|time:"H:i"|default_if_none:"—" }}
+                        </td>
+
+                        <td class="text-center">
+                            {{ r.salida|time:"H:i"|default_if_none:"—" }}
+                        </td>
+
+                        <td class="text-center">
+                            {{ r.extra_inicio|time:"H:i"|default_if_none:"—" }}
+                        </td>
+
+                        <td class="text-center">
+                            {{ r.extra_fin|time:"H:i"|default_if_none:"—" }}
+                        </td>
 
                         <td class="text-center">
                             {% if r.estado == "RETARDO" %}

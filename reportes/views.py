@@ -78,6 +78,7 @@ from core.excel.impresion import configurar_impresion
 from core.excel.respuesta import crear_respuesta_excel
 from core.services.prenomina_service import ResumenPrenomina
 from nucleo.models import Departamento, Empleado
+from core.services.asistencia_service import obtener_tiempo_extra
 
 
 def calcular_estado_asistencia(empleado, fecha):
@@ -313,72 +314,104 @@ def reporte_permisos(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    # 🔹 BASE
     movimientos = Movimiento.objects.filter(
         tipo__in=["SALIDA_PERMISO", "REGRESO"],
-        asistencia__empleado__empresa=request.empresa  # 🔥 CLAVE
-    ).select_related("asistencia__empleado")
+        asistencia__empleado__empresa=empresa,
+    ).select_related(
+        "asistencia__empleado"
+    )
 
-    # 🔹 FILTROS
     if inicio:
         movimientos = movimientos.filter(fecha__gte=inicio)
+
     if fin:
         movimientos = movimientos.filter(fecha__lte=fin)
+
     if empleado_id:
         movimientos = movimientos.filter(
             asistencia__empleado_id=empleado_id
         )
 
-    # 🔹 ORDEN
     movimientos = movimientos.order_by(
         "asistencia__empleado__numero_empleado",
         "fecha",
-        "hora"
+        "hora",
     )
 
-    # 🔹 LOGICA (igual que excel)
     control = {}
     resultados = []
 
-    for m in movimientos:
+    for movimiento in movimientos:
 
-        key = (m.asistencia_id, m.fecha)
+        key = (
+            movimiento.asistencia_id,
+            movimiento.fecha,
+        )
 
-        if m.tipo == "SALIDA_PERMISO":
+        if movimiento.tipo == "SALIDA_PERMISO":
+
             control[key] = {
-                "numero_empleado": m.asistencia.empleado.numero_empleado,
-                "empleado": m.asistencia.empleado.nombre,
-                "fecha": m.fecha,
-                "salida": m.hora,
-                "regreso": None
+                "numero_empleado": (
+                    movimiento.asistencia.empleado.numero_empleado
+                ),
+                "empleado": movimiento.asistencia.empleado.nombre,
+                "fecha": movimiento.fecha,
+                "salida": movimiento.hora,
+                "regreso": None,
             }
 
-        elif m.tipo == "REGRESO" and key in control:
-
+        elif (
+            movimiento.tipo == "REGRESO"
+            and key in control
+        ):
             data = control[key]
-            data["regreso"] = m.hora
+            data["regreso"] = movimiento.hora
 
             resultados.append(data)
 
             del control[key]
 
-                # Mostrar salidas con permiso que todavía no tienen regreso
+    # Mostrar permisos que todavía no tienen regreso
     for data in control.values():
         resultados.append(data)
 
-    # 🔹 EMPLEADOS (filtro)
-    empleados = Empleado.objects.filter(
-        empresa=empresa,
-        activo=True
+
+    resultados.sort(
+        key=lambda registro: (
+            str(registro["numero_empleado"]),
+            registro["fecha"],
+            registro["salida"],
+        )
     )
 
-    return render(request, "reportes/permisos.html", {
-        "resultados": resultados,   # 🔥 CLAVE
-        "empleados": empleados,
-        "empleado_id": empleado_id,
-        "inicio": inicio,
-        "fin": fin
-    })
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True,
+    ).order_by(
+        "numero_empleado"
+    )
+
+    resultados.sort(
+        key=lambda registro: (
+            str(registro["numero_empleado"]),
+            registro["fecha"],
+            registro["salida"],
+        )
+    )
+
+
+
+    return render(
+        request,
+        "reportes/permisos.html",
+        {
+            "resultados": resultados,
+            "empleados": empleados,
+            "empleado_id": empleado_id,
+            "inicio": inicio,
+            "fin": fin,
+        },
+    )
     
 def obtener_asistencias(empresa, inicio=None, fin=None, empleado_id=None):
 
@@ -1871,7 +1904,7 @@ def exportar_permisos_excel(request):
         workbook=wb,
         nombre_archivo="reporte_permisos.xlsx",
     )
-from core.services.asistencia_service import obtener_tiempo_extra
+
 
 def reporte_nomina(request):
 

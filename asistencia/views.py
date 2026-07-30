@@ -14,8 +14,8 @@ from django.contrib import messages
 
 @solo_operativo
 def permisos(request):
-    
 
+    empresa = request.empresa
     mensaje = None
 
     if request.method == "POST":
@@ -23,12 +23,10 @@ def permisos(request):
         numero = request.POST.get("numero_empleado")
         tipo = request.POST.get("tipo")
 
-        print("👉 NUMERO:", numero)
-        print("👉 TIPO:", tipo)
-
         empleado = Empleado.objects.filter(
+            empresa=empresa,
             numero_empleado=numero,
-            activo=True
+            activo=True,
         ).first()
 
         if not empleado:
@@ -36,14 +34,13 @@ def permisos(request):
 
         else:
             hoy = timezone.localdate()
-            now = timezone.localtime()
+            ahora = timezone.localtime()
 
             asistencia = Asistencia.objects.filter(
+                empresa=empresa,
                 empleado=empleado,
-                fecha=hoy
+                fecha=hoy,
             ).first()
-
-            print("👉 ASISTENCIA:", asistencia)
 
             if not asistencia:
                 mensaje = "Primero debe registrar entrada"
@@ -52,7 +49,7 @@ def permisos(request):
                 ultimo_movimiento = Movimiento.objects.filter(
                     asistencia=asistencia,
                     tipo__in=["SALIDA_PERMISO", "REGRESO"],
-                ).order_by("-hora").first()
+                ).order_by("-fecha", "-hora").first()
 
                 if tipo == "SALIDA_PERMISO":
 
@@ -68,12 +65,10 @@ def permisos(request):
                     else:
                         Movimiento.objects.create(
                             asistencia=asistencia,
-                            tipo=tipo,
+                            tipo="SALIDA_PERMISO",
                             fecha=hoy,
-                            hora=now.time()
+                            hora=ahora.time(),
                         )
-
-                        print("🔥 MOVIMIENTO CREADO")
 
                         mensaje = "Salida con permiso registrada"
 
@@ -91,19 +86,23 @@ def permisos(request):
                     else:
                         Movimiento.objects.create(
                             asistencia=asistencia,
-                            tipo=tipo,
+                            tipo="REGRESO",
                             fecha=hoy,
-                            hora=now.time()
+                            hora=ahora.time(),
                         )
-
-                        print("🔥 MOVIMIENTO CREADO")
 
                         mensaje = "Regreso registrado"
 
                 else:
                     mensaje = "Tipo de movimiento no válido"
-    return render(request, "asistencia/permisos.html", { "mensaje":mensaje})
-                
+
+    return render(
+        request,
+        "asistencia/permisos.html",
+        {
+            "mensaje": mensaje,
+        },
+    )
 
 
 @solo_operativo

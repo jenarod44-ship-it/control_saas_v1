@@ -39,20 +39,31 @@ def estado_dia(request):
             asistencia__empleado=empleado,
             fecha=fecha
         ).order_by("hora")
-        extra_inicio = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").first()
-        extra_fin = movimientos.filter(tipo="FIN_TIEMPO_EXTRA").first()
+
+        salida_permiso = movimientos.filter(
+            tipo="SALIDA_PERMISO"
+        ).last()
+
+        regreso_permiso = movimientos.filter(
+            tipo="REGRESO"
+        ).last()
+
+        extra_inicio = movimientos.filter(
+            tipo="INICIO_TIEMPO_EXTRA"
+        ).first()
+
+        extra_fin = movimientos.filter(
+            tipo="FIN_TIEMPO_EXTRA"
+        ).first()
 
         calc = CalculadoraAsistencia(empleado, fecha, movimientos)
         resultado = calc.calcular()
-       
-        # calc.guardar_incidencias()
 
         estado = resultado["estado"]
 
         if not empleado.control_horario and estado == "FALTA":
             estado = "SIN CONTROL"
 
-        
         if fecha == timezone.localdate() and estado == "FALTA":
 
             if empleado.turno:
@@ -60,18 +71,24 @@ def estado_dia(request):
 
                 limite_entrada = (
                     datetime.combine(fecha, empleado.turno.hora_entrada)
-                    + timedelta(minutes=empleado.turno.tolerancia_minutos)
+                    + timedelta(
+                        minutes=empleado.turno.tolerancia_minutos
+                    )
                 ).time()
 
                 if ahora <= limite_entrada:
                     estado = "PENDIENTE"
 
-        # 🔢 CONTADORES
         if estado == "RETARDO":
             presentes += 1
             retardos += 1
 
-        elif estado in ["ASISTENCIA", "OK", "COMPLETO", "INCOMPLETO"]:
+        elif estado in [
+            "ASISTENCIA",
+            "OK",
+            "COMPLETO",
+            "INCOMPLETO",
+        ]:
             presentes += 1
 
         elif estado == "FALTA":
@@ -80,13 +97,29 @@ def estado_dia(request):
         reporte_dia.append({
             "empleado": empleado,
             "entrada": resultado["entrada"],
+            "permiso": (
+                salida_permiso.hora
+                if salida_permiso else None
+            ),
+            "regreso": (
+                regreso_permiso.hora
+                if regreso_permiso else None
+            ),
             "salida": resultado["salida"],
             "horas": resultado["horas_trabajadas"],
             "estado": estado,
             "incidencia": resultado.get("incidencia"),
-            "tipo_incidencia": resultado.get("tipo_incidencia", ""),
-            "extra_inicio": extra_inicio.hora if extra_inicio else None,
-            "extra_fin": extra_fin.hora if extra_fin else None,
+            "tipo_incidencia": resultado.get(
+                "tipo_incidencia", ""
+            ),
+            "extra_inicio": (
+                extra_inicio.hora
+                if extra_inicio else None
+            ),
+            "extra_fin": (
+                extra_fin.hora
+                if extra_fin else None
+            ),
         })
 
     return render(request, "control/estado_dia.html", {
