@@ -1,0 +1,94 @@
+{% extends "control/base.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">Registro de Permisos</h2>
+        <small class="text-muted">
+            Registra salidas con permiso y regresos durante la jornada
+        </small>
+    </div>
+
+    <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+        ← Panel de Control
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+        <div class="card shadow border-0">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Movimiento de permiso</h5>
+            </div>
+
+            <div class="card-body">
+
+                {% if mensaje %}
+                    <div class="alert alert-info text-center">
+                        {{ mensaje }}
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="numero_empleado" class="form-label">
+                            Número de empleado
+                        </label>
+
+                        <input
+                            type="text"
+                            name="numero_empleado"
+                            id="numero_empleado"
+                            class="form-control form-control-lg text-center"
+                            placeholder="Ingrese el número de empleado"
+                            autocomplete="off"
+                            autofocus
+                            required
+                        >
+                    </div>
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6 d-grid">
+                            <button
+                                type="submit"
+                                name="tipo"
+                                value="SALIDA_PERMISO"
+                                class="btn btn-warning btn-lg"
+                            >
+                                Salida con permiso
+                            </button>
+                        </div>
+
+                        <div class="col-md-6 d-grid">
+                            <button
+                                type="submit"
+                                name="tipo"
+                                value="REGRESO"
+                                class="btn btn-success btn-lg"
+                            >
+                                Registrar regreso
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+
+            </div>
+        </div>
+
+        <div class="alert alert-light border mt-3 mb-0">
+            <strong>Importante:</strong>
+            el empleado debe haber registrado primero su entrada.
+            No puede registrar otra salida con permiso mientras exista
+            un regreso pendiente.
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
