@@ -62,18 +62,36 @@ def calcular_estado_asistencia(empleado, fecha):
         return "INCIDENCIA"
 
     # =========================
-    # 2. DÍA NO LABORAL
+    # 2. BUSCAR ASISTENCIA
+    # =========================
+    asistencia = empleado.asistencia_set.filter(
+        fecha=fecha,
+    ).first()
+
+    # =========================
+    # 3. EMPLEADO SIN CONTROL
+    # =========================
+    # No se evalúan días laborales, turno,
+    # puntualidad ni retardos.
+    if not empleado.control_horario:
+
+        if not asistencia or not asistencia.hora_entrada:
+            return "FALTA"
+
+        if not asistencia.hora_salida:
+            return "INCOMPLETO"
+
+        return "OK"
+
+    # =========================
+    # 4. DÍA NO LABORAL
     # =========================
     if not debe_generar_falta(empleado, fecha):
         return "NO_LABORAL"
 
     # =========================
-    # 3. ASISTENCIA
+    # 5. ASISTENCIA
     # =========================
-    asistencia = empleado.asistencia_set.filter(
-        fecha=fecha
-    ).first()
-
     if not asistencia:
         return "FALTA"
 
@@ -86,29 +104,29 @@ def calcular_estado_asistencia(empleado, fecha):
         return "SIN TURNO"
 
     movimientos = Movimiento.objects.filter(
-        asistencia=asistencia
+        asistencia=asistencia,
     )
 
     tiene_salida_permiso = movimientos.filter(
-        tipo="SALIDA_PERMISO"
+        tipo="SALIDA_PERMISO",
     ).exists()
 
     tiene_regreso = movimientos.filter(
-        tipo="REGRESO"
+        tipo="REGRESO",
     ).exists()
 
     tiene_tiempo_extra = movimientos.filter(
-        tipo="INICIO_TIEMPO_EXTRA"
+        tipo="INICIO_TIEMPO_EXTRA",
     ).exists()
 
     # =========================
-    # 4. TIEMPO EXTRA
+    # 6. TIEMPO EXTRA
     # =========================
     if es_tiempo_extra(empleado, fecha):
         return "TIEMPO_EXTRA"
 
     # =========================
-    # 5. ASISTENCIA INCOMPLETA
+    # 7. ASISTENCIA INCOMPLETA
     # =========================
     if not asistencia.hora_salida:
 
@@ -121,20 +139,20 @@ def calcular_estado_asistencia(empleado, fecha):
         return "INCOMPLETO"
 
     # =========================
-    # 6. PUNTUALIDAD
+    # 8. PUNTUALIDAD
     # =========================
     entrada_real = datetime.combine(
         fecha,
-        asistencia.hora_entrada
+        asistencia.hora_entrada,
     )
 
     entrada_turno = datetime.combine(
         fecha,
-        turno.hora_entrada
+        turno.hora_entrada,
     )
 
     tolerancia = timedelta(
-        minutes=turno.tolerancia_minutos
+        minutes=turno.tolerancia_minutos,
     )
 
     if entrada_real <= entrada_turno + tolerancia:
