@@ -159,18 +159,35 @@ from datetime import time
 
 
 def calcular_estado_asistencia(empleado, fecha):
+
     incidencia_dia = IncidenciaDia.objects.filter(
         empleado=empleado,
-        fecha=fecha
+        fecha=fecha,
     ).first()
 
     if incidencia_dia:
         return incidencia_dia.tipo
 
+    asistencia = empleado.asistencia_set.filter(
+        fecha=fecha,
+    ).first()
+
+    # Empleados sin control de horario:
+    # no se evalúan días laborales ni retardos.
+    if not empleado.control_horario:
+
+        if not asistencia or not asistencia.hora_entrada:
+            return "FALTA"
+
+        if not asistencia.hora_salida:
+            return "INCOMPLETO"
+
+        return "OK"
+
+    # Solo empleados con control de horario
+    # se clasifican como día no laboral.
     if not debe_generar_falta(empleado, fecha):
         return "NO_LABORAL"
-
-    asistencia = empleado.asistencia_set.filter(fecha=fecha).first()
 
     if not asistencia:
         return "FALTA"
