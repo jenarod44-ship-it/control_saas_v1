@@ -194,6 +194,44 @@ class CalculadoraAsistencia:
                 "La fecha todavía no ocurre.",
             )
 
+        # ==========================================================
+        # EMPLEADO SIN CONTROL DE HORARIO
+        # ==========================================================
+        # Debe registrar asistencia, pero no se evalúan
+        # días laborales, turno, tolerancia ni puntualidad.
+        if not self.empleado.control_horario:
+
+            # Sin ninguna checada.
+            if not entrada and not salida:
+                return (
+                    "FALTA",
+                    "No existe registro de asistencia.",
+                )
+
+            # Entrada sin salida.
+            if entrada and not salida:
+                return (
+                    "INCOMPLETO",
+                    "Existe entrada, pero no existe salida.",
+                )
+
+            # Salida sin entrada.
+            if not entrada and salida:
+                return (
+                    "IRREGULAR",
+                    "Existe salida, pero no existe entrada.",
+                )
+
+            # Entrada y salida completas.
+            return (
+                "OK",
+                "Asistencia completa. No se evalúa puntualidad.",
+            )
+
+        # ==========================================================
+        # EMPLEADO CON CONTROL DE HORARIO
+        # ==========================================================
+
         # 3. Día no laborable.
         if not es_laborable:
             return (
@@ -201,51 +239,14 @@ class CalculadoraAsistencia:
                 "La fecha no corresponde a un día laboral.",
             )
 
-    # ==========================================================
-    # EMPLEADO SIN CONTROL DE HORARIO
-    # ==========================================================
-    # Debe registrar asistencia, pero no se evalúa puntualidad.
-        if not self.empleado.control_horario:
-
-        # Sin ninguna checada.
-            if not entrada and not salida:
-                return (
-                    "FALTA",
-                    "Era día laborable y no existe registro de asistencia.",
-                )
-
-        # Entrada sin salida.
-            if entrada and not salida:
-                return (
-                    "INCOMPLETO",
-                    "Existe entrada, pero no existe salida.",
-                )
-
-        # Salida sin entrada.
-            if not entrada and salida:
-                return (
-                    "IRREGULAR",
-                    "Existe salida, pero no existe entrada.",
-                )
-
-        # Entrada y salida completas.
-            return (
-                "OK",
-                "Asistencia completa. No se evalúa puntualidad.",
-            )
-
-    # ==========================================================
-    # EMPLEADO CON CONTROL DE HORARIO
-    # ==========================================================
-
-    # 4. Empleado sin turno.
+        # 4. Empleado sin turno.
         if not self.turno:
             return (
                 "SIN_TURNO",
                 "El empleado no tiene un turno asignado.",
             )
 
-    # 5. No existe ninguna checada.
+        # 5. No existe ninguna checada.
         if not entrada and not salida:
             if self._todavia_puede_entrar():
                 return (
@@ -257,7 +258,7 @@ class CalculadoraAsistencia:
                 "FALTA",
                 "Era día laborable y no existe registro de entrada.",
             )
-
+        
     # 6. Entrada sin salida.
         if entrada and not salida:
             return (
