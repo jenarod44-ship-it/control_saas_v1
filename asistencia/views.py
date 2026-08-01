@@ -194,59 +194,47 @@ from asistencia.models import Asistencia, Movimiento
 def checador(request):
 
     mensaje = None
+    empresa = request.empresa
 
     if request.method == "POST":
 
         numero = request.POST.get("numero_empleado")
 
         if not numero:
-            return render(request, "control/checador.html", {
-                "mensaje": "Ingrese número de empleado"
-            })
-        
-        from core.utils.laboral import es_dia_laboral
+            return render(
+                request,
+                "control/checador.html",
+                {
+                    "mensaje": "Ingrese número de empleado",
+                },
+            )
 
-        empresa = request.empresa
+        from core.utils.laboral import es_dia_laboral
 
         empleado = Empleado.objects.filter(
             empresa=empresa,
             numero_empleado=numero,
-            activo=True
+            activo=True,
         ).first()
 
         if not empleado:
-            return render(request, "control/checador.html", {
-                "mensaje": "Empleado no encontrado"
-            })
+            return render(
+                request,
+                "control/checador.html",
+                {
+                    "mensaje": "Empleado no encontrado",
+                },
+            )
 
         hoy = timezone.localdate()
         now = timezone.localtime()
 
         # ==========================================================
-        # BLOQUEAR CHECADOR NORMAL EN DÍA NO LABORAL
+        # 1. LA INCIDENCIA TIENE PRIORIDAD
         # ==========================================================
-        if (
-            empleado.control_horario
-            and not es_dia_laboral(empleado, hoy)
-        ):
-            messages.warning(
-                request,
-                (
-                    f"Hoy no es un día laboral para {empleado.nombre}. "
-                    "Si trabajará hoy, debe registrar su jornada en Tiempo Extra."
-                ),
-            )
-
-            return redirect("asistencia:checador")
-
         incidencia_dia = IncidenciaDia.objects.filter(
             empleado=empleado,
-            fecha=hoy
-        ).first()
-
-        incidencia_dia = IncidenciaDia.objects.filter(
-            empleado=empleado,
-            fecha=hoy
+            fecha=hoy,
         ).first()
 
         if incidencia_dia and incidencia_dia.tipo.upper() in [
@@ -255,83 +243,132 @@ def checador(request):
             "DESCANSO",
             "PERMISO",
         ]:
-            mensaje = f"No se puede registrar asistencia. El empleado tiene {incidencia_dia.tipo} registrada para hoy."
+            mensaje = (
+                "No se puede registrar asistencia. "
+                f"{empleado.nombre} tiene "
+                f"{incidencia_dia.tipo} registrada para hoy."
+            )
 
-            return render(request, "control/checador.html", {
-                "mensaje": mensaje
-            })
-        
+            return render(
+                request,
+                "control/checador.html",
+                {
+                    "mensaje": mensaje,
+                },
+            )
+
+        # ==========================================================
+        # 2. VALIDAR DÍA LABORAL DESPUÉS DE LA INCIDENCIA
+        # ==========================================================
+        if (
+            empleado.control_horario
+            and not es_dia_laboral(empleado, hoy)
+        ):
+            mensaje = (
+                f"Hoy no es un día laboral para {empleado.nombre}. "
+                "Si trabajará hoy, debe registrar su jornada "
+                "en Tiempo Extra."
+            )
+
+            return render(
+                request,
+                "control/checador.html",
+                {
+                    "mensaje": mensaje,
+                },
+            )
+
         asistencia = Asistencia.objects.filter(
+            empresa=empresa,
             empleado=empleado,
-            fecha=hoy
+            fecha=hoy,
         ).first()
 
         if not asistencia:
             asistencia = Asistencia.objects.create(
                 empleado=empleado,
-                empresa=empleado.empresa,
-                fecha=hoy
+                empresa=empresa,
+                fecha=hoy,
             )
 
-        # 🔥 LÓGICA SIMPLE
+        if not empleado.turno:
+            mensaje = "Empleado sin turno asignado"
+
+            return render(
+                request,
+                "control/checador.html",
+                {
+                    "mensaje": mensaje,
+                },
+            )
+
         movimientos = list(
             asistencia.movimientos
             .order_by("fecha", "hora")
             .values_list("tipo", flat=True)
         )
 
-        hora_actual = now.time()
-
-        if not empleado.turno:
-            mensaje = "Empleado sin turno asignado"
-            return render(request, "control/checador.html", {"mensaje": mensaje})
-
-        hora_salida_turno = empleado.turno.hora_salida
-
         if not asistencia.hora_entrada:
             tipo = "ENTRADA"
 
         else:
-            movimientos = list(
-                asistencia.movimientos
-                .order_by("fecha", "hora")
-                .values_list("tipo", flat=True)
-            )
+            if (
+                "SALIDA_PERMISO" in movimientos
+                and "REGRESO" not in movimientos
+            ):
+                mensaje = (
+                    "El empleado tiene una salida con permiso pendiente. "
+                    "Debe registrar el regreso antes de marcar salida."
+                )
 
-            if "SALIDA_PERMISO" in movimientos and "REGRESO" not in movimientos:
-                mensaje = "El empleado tiene una salida con permiso pendiente. Debe registrar el regreso antes de marcar salida."
-                return render(request, "control/checador.html", {
-                    "mensaje": mensaje
-                })
+                return render(
+                    request,
+                    "control/checador.html",
+                    {
+                        "mensaje": mensaje,
+                    },
+                )
 
-            elif not asistencia.hora_salida:
+            if not asistencia.hora_salida:
                 tipo = "SALIDA"
 
             else:
                 mensaje = "El día ya está cerrado"
-                return render(request, "control/checador.html", {
-                    "mensaje": mensaje
-                })
 
-        # 🔥 REGISTRAR
+                return render(
+                    request,
+                    "control/checador.html",
+                    {
+                        "mensaje": mensaje,
+                    },
+                )
+
+        # ==========================================================
+        # REGISTRAR ENTRADA O SALIDA
+        # ==========================================================
         if tipo == "ENTRADA":
             asistencia.hora_entrada = now.time()
             asistencia.save()
+
             mensaje = f"{empleado.nombre} - Entrada registrada"
 
         elif tipo == "SALIDA":
             asistencia.hora_salida = now.time()
             asistencia.save()
+
             mensaje = f"{empleado.nombre} - Salida registrada"
 
-        # 🔥 MOVIMIENTO (solo registro)
         Movimiento.objects.create(
             asistencia=asistencia,
             tipo=tipo,
             fecha=hoy,
-            hora=now.time()
+            hora=now.time(),
         )
 
-    return render(request, "control/checador.html", {
-        "mensaje": mensaje
-    })
+    return render(
+        request,
+        "control/checador.html",
+        {
+            "mensaje": mensaje,
+        },
+    )
