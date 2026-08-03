@@ -12,6 +12,12 @@ urlpatterns = [
     path("estado-dia/", views.estado_dia, name="estado_dia"),
 
     path(
+        "estado-dia/excel/",
+        views.estado_dia_excel,
+        name="estado_dia_excel",
+    ),
+
+    path(
         "cambiar-empresa/<int:empresa_id>/",
         cambiar_empresa,
         name="cambiar_empresa"

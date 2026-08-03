@@ -8,9 +8,37 @@
         <small class="text-muted">Resumen operativo de asistencia</small>
     </div>
 
-    <div class="text-end">
-        <span class="badge bg-secondary">Total: {{ reporte_dia|length }}</span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-secondary">
+            Total: {{ reporte_dia|length }}
+        </span>
+
+        <a
+            href="{% url 'core:estado_dia_excel' %}?fecha={{ fecha|date:'Y-m-d' }}"
+            class="btn btn-success btn-sm"
+        >
+            Exportar Excel
+        </a>
     </div>
+</div>
+
+<div class="solo-impresion encabezado-impresion">
+    <h2>Estado del día</h2>
+
+    <p>
+        <strong>Empresa:</strong>
+        {{ request.empresa.nombre|default:"Sin empresa seleccionada" }}
+    </p>
+
+    <p>
+        <strong>Fecha:</strong>
+        {% now "d/m/Y" %}
+    </p>
+
+    <p>
+        <strong>Total de empleados:</strong>
+        {{ reporte_dia|length }}
+    </p>
 </div>
 
 <div class="card shadow border-0">
@@ -117,5 +145,98 @@
     </div>
 
 </div>
+
+<style>
+    .solo-impresion {
+        display: none;
+    }
+
+    @media print {
+
+        @page {
+            size: landscape;
+            margin: 10mm;
+        }
+
+        body {
+            background: white !important;
+            font-size: 10px;
+        }
+
+        .no-imprimir,
+        nav,
+        .navbar,
+        footer {
+            display: none !important;
+        }
+
+        .solo-impresion {
+            display: block !important;
+        }
+
+        .encabezado-impresion {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .encabezado-impresion h2 {
+            margin-bottom: 8px;
+        }
+
+        .encabezado-impresion p {
+            margin: 2px 0;
+        }
+
+        .container,
+        .container-fluid {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .card-body {
+            padding: 0 !important;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #000 !important;
+            padding: 4px !important;
+            color: #000 !important;
+            background: white !important;
+            vertical-align: middle !important;
+        }
+
+        table th {
+            font-weight: bold !important;
+            text-align: center !important;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+
+        .badge {
+            color: #000 !important;
+            background: transparent !important;
+            border: 1px solid #000 !important;
+        }
+    }
+</style>
 
 {% endblock %}
