@@ -60,6 +60,7 @@ def crear_reporte_excel(
     columnas_centradas=None,
     columnas_envueltas=None,
     columna_estado=None,
+    reglas_color=None,
 ):
     """
     Genera un reporte Excel con el formato estándar del sistema.
@@ -103,6 +104,7 @@ def crear_reporte_excel(
     formatos = formatos or {}
     columnas_centradas = set(columnas_centradas or [])
     columnas_envueltas = set(columnas_envueltas or [])
+    reglas_color = reglas_color or {}
 
     fila_actual = fila_encabezado + 1
 
@@ -129,8 +131,54 @@ def crear_reporte_excel(
             if numero_columna in formatos and valor not in [None, "--"]:
                 celda.number_format = formatos[numero_columna]
 
-        if columna_estado:
+                # ==========================================
+        # REGLAS GENÉRICAS DE COLOR
+        # ==========================================
+        for numero_columna, mapa_colores in reglas_color.items():
+
+            if numero_columna < 1 or numero_columna > len(valores):
+                continue
+
+            valor = valores[numero_columna - 1]
+
+            valor_normalizado = str(
+                valor or ""
+            ).strip().upper()
+
+            relleno = mapa_colores.get(
+                valor_normalizado
+            )
+
+            # Permite reglas parciales como:
+            # "SIN SALIDA", "RETARDO" o "SIN TURNO"
+            # dentro de textos más largos.
+            if not relleno:
+                for texto_regla, relleno_regla in mapa_colores.items():
+                    texto_normalizado = str(
+                        texto_regla
+                    ).strip().upper()
+
+                    if (
+                        texto_normalizado
+                        and texto_normalizado in valor_normalizado
+                    ):
+                        relleno = relleno_regla
+                        break
+
+            if relleno:
+                ws.cell(
+                    row=fila_actual,
+                    column=numero_columna,
+                ).fill = relleno
+
+        # ==========================================
+        # COMPATIBILIDAD TEMPORAL
+        # Estado del Día todavía usa columna_estado.
+        # ==========================================
+        if columna_estado and columna_estado not in reglas_color:
+
             estado = valores[columna_estado - 1]
+
             estado_normalizado = str(
                 estado or ""
             ).strip().upper()
