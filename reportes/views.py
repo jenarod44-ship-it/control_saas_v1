@@ -9,6 +9,14 @@ from core.excel.encabezado import (
     escribir_encabezados,
 )
 
+from reportes.services.permisos import (
+    obtener_resultados_permisos,
+)
+
+from reportes.adapters.permisos_excel import (
+    construir_reporte_permisos,
+)
+
 from core.excel.estilos import (
     ALINEACION_CENTRO,
     ALINEACION_DERECHA,
@@ -325,8 +333,6 @@ def obtener_movimientos(empresa, fecha_inicio=None, fecha_fin=None, empleado=Non
 
 @solo_operativo
 def reporte_permisos(request):
-
-    from asistencia.models import Movimiento
     from nucleo.models import Empleado
 
     empresa = request.empresa
@@ -335,92 +341,20 @@ def reporte_permisos(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    movimientos = Movimiento.objects.filter(
-        tipo__in=["SALIDA_PERMISO", "REGRESO"],
-        asistencia__empleado__empresa=empresa,
-    ).select_related(
-        "asistencia__empleado"
-    )
-
-    if inicio:
-        movimientos = movimientos.filter(fecha__gte=inicio)
-
-    if fin:
-        movimientos = movimientos.filter(fecha__lte=fin)
-
-    if empleado_id:
-        movimientos = movimientos.filter(
-            asistencia__empleado_id=empleado_id
-        )
-
-    movimientos = movimientos.order_by(
-        "asistencia__empleado__numero_empleado",
-        "fecha",
-        "hora",
-    )
-
-    control = {}
-    resultados = []
-
-    for movimiento in movimientos:
-
-        key = (
-            movimiento.asistencia_id,
-            movimiento.fecha,
-        )
-
-        if movimiento.tipo == "SALIDA_PERMISO":
-
-            control[key] = {
-                "numero_empleado": (
-                    movimiento.asistencia.empleado.numero_empleado
-                ),
-                "empleado": movimiento.asistencia.empleado.nombre,
-                "fecha": movimiento.fecha,
-                "salida": movimiento.hora,
-                "regreso": None,
-            }
-
-        elif (
-            movimiento.tipo == "REGRESO"
-            and key in control
-        ):
-            data = control[key]
-            data["regreso"] = movimiento.hora
-
-            resultados.append(data)
-
-            del control[key]
-
-    # Mostrar permisos que todavía no tienen regreso
-    for data in control.values():
-        resultados.append(data)
-
-
-    resultados.sort(
-        key=lambda registro: (
-            str(registro["numero_empleado"]),
-            registro["fecha"],
-            registro["salida"],
-        )
+    resultados = obtener_resultados_permisos(
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        empleado_id=empleado_id,
     )
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
         activo=True,
     ).order_by(
-        "numero_empleado"
+        "numero_empleado",
+        "nombre",
     )
-
-    resultados.sort(
-        key=lambda registro: (
-            str(registro["numero_empleado"]),
-            registro["fecha"],
-            registro["salida"],
-        )
-    )
-
-
 
     return render(
         request,
@@ -551,8 +485,21 @@ def exportar_tiempos_extra_excel(request):
         horas = info.get("horas", 0)
 
         # No mostrar registros cerrados con cero horas
-        if isinstance(horas, (int, float)) and horas <= 0:
+        info = obtener_tiempo_extra(asistencia)
+
+        if not info:
             continue
+
+        horas = info.get("horas", 0)
+
+        valores = [
+            asistencia.empleado.numero_empleado,
+            asistencia.empleado.nombre,
+            asistencia.fecha,
+            info.get("inicio") or "--",
+            info.get("fin") or "--",
+            horas,
+        ]
 
         valores = [
             asistencia.empleado.numero_empleado,
@@ -1305,6 +1252,18 @@ def exportar_incidencias_excel_xlsx(request):
         workbook=wb,
         nombre_archivo="reporte_incidencias.xlsx",
     )
+@solo_operativo
+def exportar_permisos_excel(request):
+
+    configuracion = construir_reporte_permisos(
+        request
+    )
+
+    return crear_reporte_excel(
+        **configuracion
+    )
+
+    # ----- CÓDIGO ANTERIOR ABAJO -----
 
 @solo_operativo
 def exportar_permisos_excel(request):
