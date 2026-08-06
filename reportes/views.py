@@ -1,6 +1,10 @@
 from django.contrib import messages
 from django.shortcuts import redirect
 from core.utils.asistencia import calcular_estado_asistencia
+from reportes.services.incidencias import obtener_incidencias
+from reportes.adapters.incidencias_excel import (
+    construir_reporte_incidencias,
+)
 
 from core.services.prenomina_service import ResumenPrenomina
 
@@ -1040,37 +1044,32 @@ def reporte_incidencias(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    # ✅ PRIMERO crear queryset base
-    incidencias = Incidencia.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
-
-    # ✅ luego aplicar filtros
-    if inicio and fin:
-        incidencias = incidencias.filter(fecha_inicio__range=[inicio, fin])
-
-    elif inicio:
-        incidencias = incidencias.filter(fecha_inicio__gte=inicio)
-
-    elif fin:
-        incidencias = incidencias.filter(fecha_inicio__lte=fin)
-
-    if empleado_id and empleado_id != "0":
-        incidencias = incidencias.filter(empleado_id=empleado_id)
+    incidencias = obtener_incidencias(
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        empleado_id=empleado_id,
+    )
 
     empleados = Empleado.objects.filter(
         empresa=empresa,
-        activo=True
+        activo=True,
+    ).order_by(
+        "numero_empleado",
+        "nombre",
     )
-    context = {
-        "incidencias": incidencias,
-        "empleados": empleados,
-        "inicio": inicio,
-        "fin": fin,
-        "empleado_id": empleado_id
-    }
 
-    return render(request, "reportes/incidencias.html", context)
+    return render(
+        request,
+        "reportes/incidencias.html",
+        {
+            "incidencias": incidencias,
+            "empleados": empleados,
+            "inicio": inicio,
+            "fin": fin,
+            "empleado_id": empleado_id,
+        },
+    )
 
     
 
@@ -1079,179 +1078,18 @@ def reporte_incidencias(request):
 def index(request):
     return render(request, "reportes/index.html")
 
-
-   
 @solo_operativo
 def exportar_incidencias_excel_xlsx(request):
 
-    empresa = request.empresa
-
-    inicio = request.GET.get("inicio")
-    fin = request.GET.get("fin")
-    empleado_id = request.GET.get("empleado")
-
-    incidencias = (
-        Incidencia.objects.filter(
-            empleado__empresa=empresa
-        )
-        .select_related("empleado")
-        .order_by(
-            "empleado__numero_empleado",
-            "-fecha_inicio"
-        )
+    configuracion = construir_reporte_incidencias(
+        request
     )
 
-    if empleado_id:
-        incidencias = incidencias.filter(
-            empleado_id=empleado_id
-        )
-
-    if inicio:
-        incidencias = incidencias.filter(
-            fecha_inicio__gte=inicio
-        )
-
-    if fin:
-        incidencias = incidencias.filter(
-            fecha_inicio__lte=fin
-        )
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Incidencias"
-
-    fila_encabezado = 6
-    ultima_columna = "E"
-
-    escribir_encabezado_reporte(
-        ws=ws,
-        titulo="REPORTE DE INCIDENCIAS",
-        empresa=empresa,
-        inicio=inicio,
-        fin=fin,
-        ultima_columna=ultima_columna,
+    return crear_reporte_excel(
+        **configuracion
     )
 
-    encabezados = [
-        "No. Empleado",
-        "Empleado",
-        "Tipo",
-        "Fecha Inicio",
-        "Fecha Fin",
-    ]
 
-    escribir_encabezados(
-        ws=ws,
-        fila=fila_encabezado,
-        encabezados=encabezados,
-    )
-
-    fila = fila_encabezado + 1
-
-    for incidencia in incidencias:
-
-        valores = [
-            incidencia.empleado.numero_empleado,
-            incidencia.empleado.nombre,
-            incidencia.tipo,
-            incidencia.fecha_inicio,
-            incidencia.fecha_fin,
-        ]
-
-        for columna, valor in enumerate(valores, start=1):
-
-            celda = ws.cell(
-                row=fila,
-                column=columna,
-                value=valor,
-            )
-
-            celda.border = BORDE_FINO
-
-        ws.cell(fila, 1).alignment = ALINEACION_CENTRO
-        ws.cell(fila, 2).alignment = ALINEACION_IZQUIERDA
-        ws.cell(fila, 3).alignment = ALINEACION_CENTRO
-        ws.cell(fila, 4).alignment = ALINEACION_CENTRO
-        ws.cell(fila, 5).alignment = ALINEACION_CENTRO
-
-        ws.cell(fila, 4).number_format = "dd/mm/yyyy"
-        ws.cell(fila, 5).number_format = "dd/mm/yyyy"
-
-        tipo = str(incidencia.tipo).upper()
-
-        tipo_cell = ws.cell(fila, 3)
-
-        if tipo == "VACACIONES":
-            tipo_cell.fill = RELLENO_INFORMATIVO
-
-        elif tipo == "INCAPACIDAD":
-            tipo_cell.fill = RELLENO_ERROR
-
-        elif tipo == "DESCANSO":
-            tipo_cell.fill = RELLENO_GRIS
-
-        elif tipo == "PERMISO":
-            tipo_cell.fill = RELLENO_ALERTA
-
-        fila += 1
-
-    fila_total = fila + 1
-
-    ws.merge_cells(
-        start_row=fila_total,
-        start_column=1,
-        end_row=fila_total,
-        end_column=4,
-    )
-
-    ws.cell(
-        row=fila_total,
-        column=1,
-        value="TOTAL DE INCIDENCIAS",
-    )
-
-    ws.cell(
-        row=fila_total,
-        column=5,
-        value=incidencias.count(),
-    )
-
-    for columna in range(1, 6):
-
-        celda = ws.cell(
-            row=fila_total,
-            column=columna,
-        )
-
-        celda.font = FUENTE_NEGRITA
-        celda.fill = RELLENO_GRIS
-        celda.border = BORDE_FINO
-
-    ws.cell(fila_total, 1).alignment = ALINEACION_DERECHA
-    ws.cell(fila_total, 5).alignment = ALINEACION_CENTRO
-
-    anchos = {
-        "A": 14,
-        "B": 35,
-        "C": 18,
-        "D": 14,
-        "E": 14,
-    }
-
-    for columna, ancho in anchos.items():
-        ws.column_dimensions[columna].width = ancho
-
-    configurar_impresion(
-        ws=ws,
-        fila_encabezado=fila_encabezado,
-        ultima_columna=ultima_columna,
-        ultima_fila=fila_total,
-    )
-
-    return crear_respuesta_excel(
-        workbook=wb,
-        nombre_archivo="reporte_incidencias.xlsx",
-    )
 @solo_operativo
 def exportar_permisos_excel(request):
 
