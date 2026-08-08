@@ -148,7 +148,7 @@
 
     </div>
 
-    <!-- TABLA -->
+    
     <div class="card shadow-sm">
 
         <div class="card-header bg-light">
@@ -157,9 +157,8 @@
 
         <div class="card-body p-0">
 
-            <div class="table-responsive">
-
-                <table class="table table-striped table-hover table-bordered mb-0 align-middle">
+            <div class="table-responsive tabla-prenomina-scroll">
+                <table class="table table-striped table-hover table-bordered table-sm align-middle mb-0">
 
                     <thead class="table-dark">
 
@@ -422,6 +421,33 @@
 
                     </tbody>
 
+                    {% if resultados %}
+                    <tfoot>
+                        <tr class="fila-totales-generales">
+
+                            <th colspan="4" class="text-end">
+                                TOTALES GENERALES
+                            </th>
+
+                            <th>{{ totales.dias_laborados }}</th>
+                            <th>{{ totales.no_laborales }}</th>
+                            <th>{{ totales.faltas }}</th>
+                            <th>{{ totales.vacaciones }}</th>
+                            <th>{{ totales.incapacidades }}</th>
+                            <th>{{ totales.descansos }}</th>
+                            <th>{{ totales.permisos }}</th>
+                            <th>{{ totales.dias_a_pagar }}</th>
+                            <th>{{ totales.total_fila }}</th>
+                            <th>{{ totales.dias_periodo }}</th>
+                            <th>{{ totales.retardos }}</th>
+                            <th>{{ totales.salidas_permiso }}</th>
+                            <th>{{ totales.horas_trabajadas|floatformat:2 }}</th>
+                            <th>{{ totales.tiempo_extra|floatformat:2 }}</th>
+
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+
                 </table>
 
             </div>
@@ -459,5 +485,123 @@
     {% endif %}
 
 </div>
+
+
+    .tabla-prenomina-scroll tbody td {
+        white-space: nowrap;
+    }
+</style>
+
+<style>
+    .tabla-prenomina-scroll {
+        max-height: 65vh;
+        overflow: auto;
+        position: relative;
+    }
+
+    .tabla-prenomina-scroll table {
+        min-width: 1800px;
+        margin-bottom: 0;
+    }
+
+    .tabla-prenomina-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background-color: #212529;
+        color: #ffffff;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .tabla-prenomina-scroll tbody td {
+        white-space: nowrap;
+    }
+
+    /* =====================================
+   FILA DE TOTALES FIJA AL PIE
+   ===================================== */
+
+.tabla-prenomina-scroll table {
+    min-width: 1800px;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tabla-prenomina-scroll tfoot th {
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+
+    background-color: #d9e1f2;
+    color: #212529;
+
+    border-top: 3px solid #6c757d;
+    border-bottom: 2px solid #6c757d;
+
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.55rem;
+}
+
+.tabla-prenomina-scroll tfoot th:first-child {
+    text-align: right;
+}
+
+    /* =====================================
+   COLUMNAS FIJAS: NÚMERO Y EMPLEADO
+   ===================================== */
+
+/* Anchos estables */
+.tabla-prenomina-scroll th:nth-child(1),
+.tabla-prenomina-scroll td:nth-child(1) {
+    min-width: 90px;
+    width: 90px;
+}
+
+.tabla-prenomina-scroll th:nth-child(2),
+.tabla-prenomina-scroll td:nth-child(2) {
+    min-width: 240px;
+    width: 240px;
+}
+
+/* Primera columna fija */
+.tabla-prenomina-scroll thead tr:nth-child(2) th:nth-child(1),
+.tabla-prenomina-scroll tbody td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    z-index: 12;
+}
+
+/* Segunda columna fija */
+.tabla-prenomina-scroll thead tr:nth-child(2) th:nth-child(2),
+.tabla-prenomina-scroll tbody td:nth-child(2) {
+    position: sticky;
+    left: 90px;
+    z-index: 12;
+}
+
+/* Encabezados fijos por encima de los datos */
+.tabla-prenomina-scroll thead tr:nth-child(2) th:nth-child(1),
+.tabla-prenomina-scroll thead tr:nth-child(2) th:nth-child(2) {
+    z-index: 30;
+    background-color: #212529;
+    color: #ffffff;
+}
+
+/* Fondo sólido para que no se transparenten los datos */
+.tabla-prenomina-scroll tbody td:nth-child(1),
+.tabla-prenomina-scroll tbody td:nth-child(2) {
+    background-color: #ffffff;
+}
+
+/* Separador visual después de Empleado */
+.tabla-prenomina-scroll thead tr:nth-child(2) th:nth-child(2),
+.tabla-prenomina-scroll tbody td:nth-child(2) {
+    border-right: 2px solid #6c757d;
+}
+</style>
 
 {% endblock %}

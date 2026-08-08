@@ -6,6 +6,14 @@ from reportes.adapters.incidencias_excel import (
     construir_reporte_incidencias,
 )
 
+from reportes.adapters.prenomina_excel import (
+    construir_reporte_prenomina,
+)
+
+from reportes.services.tiempo_extra import (
+    obtener_resultados_tiempo_extra,
+)
+
 from core.services.prenomina_service import ResumenPrenomina
 
 from core.excel.encabezado import (
@@ -874,11 +882,7 @@ def reporte_excel_xlsx(request):
    
 @solo_operativo
 def reporte_tiempos_extra(request):
-    
-
-    from asistencia.models import Asistencia, Movimiento
     from nucleo.models import Empleado
-    from datetime import datetime
 
     empresa = request.empresa
 
@@ -886,100 +890,33 @@ def reporte_tiempos_extra(request):
     fin = request.GET.get("fin")
     empleado_id = request.GET.get("empleado")
 
-    asistencias = Asistencia.objects.filter(
-        empleado__empresa=empresa
-    ).select_related("empleado")
-
-    # 🔹 filtros
-    if inicio and fin:
-        asistencias = asistencias.filter(fecha__range=[inicio, fin])
-    elif inicio:
-        asistencias = asistencias.filter(fecha__gte=inicio)
-    elif fin:
-        asistencias = asistencias.filter(fecha__lte=fin)
-
-    if empleado_id and empleado_id != "":
-        asistencias = asistencias.filter(empleado_id=empleado_id)
-
-    asistencias = asistencias.order_by(
-        "empleado__numero_empleado",
-        "fecha"
+    resultados, total_horas = obtener_resultados_tiempo_extra(
+        empresa=empresa,
+        inicio=inicio,
+        fin=fin,
+        empleado_id=empleado_id,
     )
 
-    resultados = []
-    total_horas = 0
-
-    for a in asistencias:
-
-        movimientos = Movimiento.objects.filter(
-            asistencia__empleado=a.empleado,
-            asistencia__fecha=a.fecha
-        ).order_by("hora")
-
-        inicio_extra = None
-        fin_extra = None
-
-        for m in movimientos:
-            if m.tipo == "INICIO_TIEMPO_EXTRA":
-                inicio_extra = m.hora
-            elif m.tipo == "FIN_TIEMPO_EXTRA":
-                fin_extra = m.hora
-
-        if inicio_extra:
-
-            if fin_extra:
-                # 🔥 calcular minutos totales
-                t_inicio = datetime.combine(a.fecha, inicio_extra)
-                t_fin = datetime.combine(a.fecha, fin_extra)
-
-                diff = t_fin - t_inicio
-
-                total_minutos = int(diff.total_seconds() / 60)
-
-                horas_base = total_minutos // 60
-                minutos = total_minutos % 60
-
-                # 🔥 REGLA DE NEGOCIO
-                if minutos >= 45:
-                    horas_final = horas_base + 1
-                else:
-                    horas_final = horas_base
-
-                total_horas += horas_final
-
-                resultados.append({
-                    "empleado": a.empleado,
-                    "fecha": a.fecha,
-                    "hora_inicio": inicio_extra,
-                    "hora_fin": fin_extra,
-                    "horas": horas_final   # 🔥 SOLO ENTERO
-                })
-
-            else:
-                # 🔥 EN CURSO
-                resultados.append({
-                    "empleado": a.empleado,
-                    "fecha": a.fecha,
-                    "hora_inicio": inicio_extra,
-                    "hora_fin": None,
-                    "horas": "EN CURSO"
-                })
-                
     empleados = Empleado.objects.filter(
         empresa=empresa,
-        activo=True
+        activo=True,
+    ).order_by(
+        "numero_empleado",
+        "nombre",
     )
 
-    context = {
-        "tiempos": resultados,
-        "empleados": empleados,
-        "inicio": inicio,
-        "fin": fin,
-        "empleado_id": empleado_id,
-        "total_horas": round(total_horas, 2)
-    }
-
-    return render(request, "reportes/tiempo_extra.html", context)
+    return render(
+        request,
+        "reportes/tiempo_extra.html",
+        {
+            "tiempos": resultados,
+            "empleados": empleados,
+            "inicio": inicio,
+            "fin": fin,
+            "empleado_id": empleado_id,
+            "total_horas": round(total_horas, 2),
+        },
+    )
 
 @solo_operativo
 def reporte_movimientos(request):
@@ -1256,6 +1193,7 @@ def exportar_nomina_excel(request):
 
 @solo_operativo
 def reporte_pre_nomina(request):
+
     empresa = request.empresa
 
     inicio = request.GET.get("inicio")
@@ -1265,119 +1203,6 @@ def reporte_pre_nomina(request):
 
     resultados = []
 
-    if inicio and fin:
-        resultados = ResumenPrenomina(
-            empresa=empresa,
-            fecha_inicio=inicio,
-            fecha_fin=fin,
-            departamento_id=departamento_id or None,
-            empleado_id=empleado_id or None,
-        ).generar()
-
-    departamentos = Departamento.objects.filter(
-        empresa=empresa,
-        activo=True,
-    ).order_by("nombre")
-
-    empleados = Empleado.objects.filter(
-        empresa=empresa,
-        activo=True,
-    ).order_by("numero_empleado")
-
-    return render(request, "reportes/pre_nomina.html", {
-        "empresa": empresa,
-        "resultados": resultados,
-        "departamentos": departamentos,
-        "empleados": empleados,
-        "inicio": inicio,
-        "fin": fin,
-        "departamento_id": departamento_id,
-        "empleado_id": empleado_id,
-    })
-
-@solo_operativo
-def exportar_pre_nomina_excel(request):
-
-    empresa = request.empresa
-
-    inicio = request.GET.get("inicio")
-    fin = request.GET.get("fin")
-    departamento_id = request.GET.get("departamento")
-    empleado_id = request.GET.get("empleado")
-
-    if not inicio or not fin:
-        messages.error(
-            request,
-            "Debe seleccionar fecha de inicio y fecha de fin."
-        )
-        return redirect("reportes:pre_nomina")
-
-    resultados = ResumenPrenomina(
-        empresa=empresa,
-        fecha_inicio=inicio,
-        fecha_fin=fin,
-        departamento_id=departamento_id or None,
-        empleado_id=empleado_id or None,
-    ).generar()
-
-    # =========================
-    # CREAR LIBRO
-    # =========================
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Pre-Nómina"
-
-    fila_encabezado = 6
-
-    # 17 columnas: A hasta R
-    ultima_columna = "R"
-
-    escribir_encabezado_reporte(
-        ws=ws,
-        titulo="RESUMEN SEMANAL DE PRE-NÓMINA",
-        empresa=empresa,
-        inicio=inicio,
-        fin=fin,
-        ultima_columna=ultima_columna,
-    )
-
-    # =========================
-    # ENCABEZADOS
-    # =========================
-    encabezados = [
-        "No. Empleado",
-        "Empleado",
-        "Departamento",
-        "Turno",
-
-        # Cuadre del período
-        "Días Trabajados",
-        "Días de Descanso",
-        "Faltas",
-        "Vacaciones",
-        "Incapacidades",
-        "Licencias",
-        "Permisos",
-        "Días a Pagar",
-        "Días Clasificados",
-        "Período",
-
-        # Información adicional
-        "Retardos",
-        "Salidas Permiso",
-        "Horas Trabajadas",
-        "Tiempo Extra",
-    ]
-
-    escribir_encabezados(
-        ws=ws,
-        fila=fila_encabezado,
-        encabezados=encabezados,
-    )
-
-    # =========================
-    # TOTALES
-    # =========================
     totales = {
         "dias_laborados": 0,
         "no_laborales": 0,
@@ -1395,227 +1220,65 @@ def exportar_pre_nomina_excel(request):
         "tiempo_extra": 0,
     }
 
-    # =========================
-    # DATOS
-    # =========================
-    fila = fila_encabezado + 1
+    if inicio and fin:
+        resultados = ResumenPrenomina(
+            empresa=empresa,
+            fecha_inicio=inicio,
+            fecha_fin=fin,
+            departamento_id=departamento_id or None,
+            empleado_id=empleado_id or None,
+        ).generar()
 
-    for registro in resultados:
+        for registro in resultados:
+            for clave in totales:
+                valor = registro.get(clave, 0) or 0
 
-        valores = [
-            registro["numero_empleado"],
-            registro["empleado"],
-            registro["departamento"],
-            registro["turno"],
+                if isinstance(valor, (int, float)):
+                    totales[clave] += valor
 
-            registro["dias_laborados"],
-            registro["no_laborales"],
-            registro["faltas"],
-            registro["vacaciones"],
-            registro["incapacidades"],
-            registro["descansos"],     # visible como Licencias
-            registro["permisos"],
-            registro["dias_a_pagar"],
-            registro["total_fila"],
-            registro["dias_periodo"],
+    departamentos = Departamento.objects.filter(
+        empresa=empresa,
+        activo=True,
+    ).order_by("nombre")
 
-            registro["retardos"],
-            registro["salidas_permiso"],
-            registro["horas_trabajadas"],
-            registro["tiempo_extra"],
-        ]
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True,
+    ).order_by("numero_empleado")
 
-        for columna, valor in enumerate(valores, start=1):
-
-            celda = ws.cell(
-                row=fila,
-                column=columna,
-                value=valor,
-            )
-
-            celda.border = BORDE_FINO
-
-        # =========================
-        # ALINEACIÓN
-        # =========================
-
-        # Número de empleado y turno
-        for columna in [1, 4]:
-            ws.cell(
-                row=fila,
-                column=columna,
-            ).alignment = ALINEACION_CENTRO
-
-        # Empleado y departamento
-        for columna in [2, 3]:
-            ws.cell(
-                row=fila,
-                column=columna,
-            ).alignment = ALINEACION_IZQUIERDA
-
-        # Valores numéricos
-        for columna in range(5, 18):
-            ws.cell(
-                row=fila,
-                column=columna,
-            ).alignment = ALINEACION_CENTRO
-
-        # Horas trabajadas y tiempo extra
-        ws.cell(fila, 17).number_format = "0.00"
-        ws.cell(fila, 18).number_format = "0.00"
-
-        # =========================
-        # COLORES
-        # =========================
-
-        if registro["dias_a_pagar"] > 0:
-            ws.cell(fila, 12).fill = RELLENO_OK
-
-        if registro["faltas"] > 0:
-            ws.cell(fila, 7).fill = RELLENO_ERROR
-
-        if registro["vacaciones"] > 0:
-            ws.cell(fila, 8).fill = RELLENO_INFORMATIVO
-
-        if registro["incapacidades"] > 0:
-            ws.cell(fila, 9).fill = RELLENO_ERROR
-
-        if registro["descansos"] > 0:
-            ws.cell(fila, 10).fill = RELLENO_GRIS
-
-        if registro["permisos"] > 0:
-            ws.cell(fila, 11).fill = RELLENO_ALERTA
-
-        if registro.get("diferencia", 0) == 0:
-            ws.cell(fila, 13).fill = RELLENO_OK
-        else:
-            ws.cell(fila, 13).fill = RELLENO_ERROR
-
-        ws.cell(fila, 14).fill = RELLENO_GRIS
-
-        if registro["retardos"] > 0:
-            ws.cell(fila, 15).fill = RELLENO_ALERTA
-
-        if registro["salidas_permiso"] > 0:
-            ws.cell(fila, 16).fill = RELLENO_INFORMATIVO
-
-        if registro["tiempo_extra"] > 0:
-            ws.cell(fila, 18).fill = RELLENO_OK
-        # =========================
-        # ACUMULAR TOTALES
-        # =========================
-        for clave in totales:
-
-            valor = registro.get(clave, 0) or 0
-
-            if isinstance(valor, (int, float)):
-                totales[clave] += valor
-
-        fila += 1
-
-    # =========================
-    # FILA DE TOTALES
-    # =========================
-    fila_total = fila + 1
-
-    ws.merge_cells(
-        start_row=fila_total,
-        start_column=1,
-        end_row=fila_total,
-        end_column=4,
+    return render(
+        request,
+        "reportes/pre_nomina.html",
+        {
+            "empresa": empresa,
+            "resultados": resultados,
+            "departamentos": departamentos,
+            "empleados": empleados,
+            "inicio": inicio,
+            "fin": fin,
+            "departamento_id": departamento_id,
+            "empleado_id": empleado_id,
+            "totales": totales,
+        },
     )
 
-    ws.cell(
-        row=fila_total,
-        column=1,
-        value="TOTALES GENERALES",
-    )
+@solo_operativo
+def exportar_pre_nomina_excel(request):
 
-    valores_totales = [
-        totales["dias_laborados"],
-        totales["no_laborales"],
-        totales["faltas"],
-        totales["vacaciones"],
-        totales["incapacidades"],
-        totales["descansos"],
-        totales["permisos"],
-        totales["dias_a_pagar"],
-        totales["total_fila"],
-        totales["dias_periodo"],
-        totales["retardos"],
-        totales["salidas_permiso"],
-        round(totales["horas_trabajadas"], 2),
-        round(totales["tiempo_extra"], 2),
-    ]
+    inicio = request.GET.get("inicio")
+    fin = request.GET.get("fin")
 
-    for columna, valor in enumerate(
-        valores_totales,
-        start=5,
-    ):
-        ws.cell(
-            row=fila_total,
-            column=columna,
-            value=valor,
+    if not inicio or not fin:
+        messages.error(
+            request,
+            "Debe seleccionar fecha de inicio y fecha de fin.",
         )
+        return redirect("reportes:pre_nomina")
 
-    for columna in range(1, 19):
-
-        celda = ws.cell(
-            row=fila_total,
-            column=columna,
-        )
-
-        celda.font = FUENTE_NEGRITA
-        celda.fill = RELLENO_GRIS
-        celda.border = BORDE_FINO
-        celda.alignment = ALINEACION_CENTRO
-
-    ws.cell(
-        row=fila_total,
-        column=1,
-    ).alignment = ALINEACION_DERECHA
-
-    ws.cell(fila_total, 17).number_format = "0.00"
-    ws.cell(fila_total, 18).number_format = "0.00"
-
-    # =========================
-    # ANCHOS
-    # =========================
-    anchos = {
-        "A": 14,
-        "B": 32,
-        "C": 24,
-        "D": 20,
-        "E": 15,
-        "F": 16,
-        "G": 9,
-        "H": 12,
-        "I": 15,
-        "J": 11,
-        "K": 10,
-        "L": 14,
-        "M": 17,
-        "N": 10,
-        "O": 10,
-        "P": 16,
-        "Q": 17,
-        "R": 13,
-    }
-
-    for columna, ancho in anchos.items():
-        ws.column_dimensions[columna].width = ancho
-
-    # =========================
-    # IMPRESIÓN
-    # =========================
-    configurar_impresion(
-        ws=ws,
-        fila_encabezado=fila_encabezado,
-        ultima_columna=ultima_columna,
-        ultima_fila=fila_total,
+    configuracion = construir_reporte_prenomina(
+        request
     )
 
-    return crear_respuesta_excel(
-        workbook=wb,
-        nombre_archivo="resumen_pre_nomina.xlsx",
+    return crear_reporte_excel(
+        **configuracion
     )

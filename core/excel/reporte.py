@@ -61,6 +61,11 @@ def crear_reporte_excel(
     columnas_envueltas=None,
     columna_estado=None,
     reglas_color=None,
+    mostrar_total=True,
+    etiqueta_total="TOTAL DE REGISTROS",
+    fila_totales=None,
+    columnas_relleno_fijo=None,
+    reglas_condicionales=None,
 ):
     """
     Genera un reporte Excel con el formato estándar del sistema.
@@ -105,6 +110,8 @@ def crear_reporte_excel(
     columnas_centradas = set(columnas_centradas or [])
     columnas_envueltas = set(columnas_envueltas or [])
     reglas_color = reglas_color or {}
+    columnas_relleno_fijo = columnas_relleno_fijo or {}
+    reglas_condicionales = reglas_condicionales or []
 
     fila_actual = fila_encabezado + 1
 
@@ -193,48 +200,99 @@ def crear_reporte_excel(
                     column=columna_estado,
                 ).fill = relleno
 
+                        # ==========================================
+        # RELLENOS FIJOS POR COLUMNA
+        # ==========================================
+        for numero_columna, relleno in columnas_relleno_fijo.items():
+            ws.cell(
+                row=fila_actual,
+                column=numero_columna,
+            ).fill = relleno
+
+        # ==========================================
+        # REGLAS CONDICIONALES GENÉRICAS
+        # ==========================================
+        for regla in reglas_condicionales:
+            numero_columna = regla["columna"]
+
+            if numero_columna < 1 or numero_columna > len(valores):
+                continue
+
+            valor = valores[numero_columna - 1]
+            condicion = regla["condicion"]
+
+            if condicion(valor, valores):
+                ws.cell(
+                    row=fila_actual,
+                    column=numero_columna,
+                ).fill = regla["relleno"]
+
         fila_actual += 1
 
     total_registros = len(filas)
 
-    # =========================
-    # TOTAL
-    # =========================
-    fila_total = fila_actual + 1
+        # =========================
+        # TOTAL
+        # =========================
+    fila_total = fila_actual - 1
 
-    if total_columnas > 1:
-        ws.merge_cells(
-            start_row=fila_total,
-            start_column=1,
-            end_row=fila_total,
-            end_column=total_columnas - 1,
-        )
+    if fila_totales is not None:
+        fila_total = fila_actual + 1
 
-    celda_total_texto = ws.cell(
-        row=fila_total,
-        column=1,
-        value="TOTAL DE REGISTROS",
-    )
+        for numero_columna, valor in enumerate(
+            fila_totales,
+            start=1,
+        ):
+            celda = ws.cell(
+                row=fila_total,
+                column=numero_columna,
+                value=valor,
+            )
+            celda.fill = RELLENO_GRIS
+            celda.border = BORDE_FINO
+            celda.alignment = ALINEACION_CENTRO
 
-    celda_total_numero = ws.cell(
-        row=fila_total,
-        column=total_columnas,
-        value=total_registros,
-    )
+            fuente = copy(celda.font)
+            fuente.bold = True
+            celda.font = fuente
 
-    for numero_columna in range(1, total_columnas + 1):
-        celda = ws.cell(
+    elif mostrar_total:
+        fila_total = fila_actual + 1
+
+        if total_columnas > 1:
+            ws.merge_cells(
+                start_row=fila_total,
+                start_column=1,
+                end_row=fila_total,
+                end_column=total_columnas - 1,
+            )
+
+        celda_total_texto = ws.cell(
             row=fila_total,
-            column=numero_columna,
+            column=1,
+            value=etiqueta_total,
         )
-        celda.fill = RELLENO_GRIS
-        celda.border = BORDE_FINO
-        fuente = copy(celda.font)
-        fuente.bold = True
-        celda.font = fuente
 
-    celda_total_texto.alignment = ALINEACION_CENTRO
-    celda_total_numero.alignment = ALINEACION_CENTRO
+        celda_total_numero = ws.cell(
+            row=fila_total,
+            column=total_columnas,
+            value=len(filas),
+        )
+
+        for numero_columna in range(1, total_columnas + 1):
+            celda = ws.cell(
+                row=fila_total,
+                column=numero_columna,
+            )
+            celda.fill = RELLENO_GRIS
+            celda.border = BORDE_FINO
+
+            fuente = copy(celda.font)
+            fuente.bold = True
+            celda.font = fuente
+
+        celda_total_texto.alignment = ALINEACION_CENTRO
+        celda_total_numero.alignment = ALINEACION_CENTRO
 
     # =========================
     # ANCHOS
