@@ -238,7 +238,16 @@ def checador(request):
         else:
             hoy = timezone.localdate()
 
-        now = timezone.localtime()
+        hora_seleccionada = request.POST.get("hora")
+        
+
+        if hora_seleccionada:
+            hora_registro = datetime.strptime(
+                hora_seleccionada,
+                "%H:%M",
+            ).time()
+        else:
+            hora_registro = timezone.localtime().time()
 
         # ==========================================================
         # 1. LA INCIDENCIA TIENE PRIORIDAD
@@ -358,13 +367,13 @@ def checador(request):
         # REGISTRAR ENTRADA O SALIDA
         # ==========================================================
         if tipo == "ENTRADA":
-            asistencia.hora_entrada = now.time()
+            asistencia.hora_entrada = hora_registro
             asistencia.save()
 
             mensaje = f"{empleado.nombre} - Entrada registrada"
 
         elif tipo == "SALIDA":
-            asistencia.hora_salida = now.time()
+            asistencia.hora_salida = hora_registro
             asistencia.save()
 
             mensaje = f"{empleado.nombre} - Salida registrada"
@@ -373,7 +382,7 @@ def checador(request):
             asistencia=asistencia,
             tipo=tipo,
             fecha=hoy,
-            hora=now.time(),
+            hora=hora_registro,
         )
 
     return render(
