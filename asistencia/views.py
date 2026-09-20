@@ -196,6 +196,7 @@ def checador(request):
 
     mensaje = None
     empresa = request.empresa
+    
 
     if request.method == "POST":
 
@@ -269,14 +270,55 @@ def checador(request):
                 f"{incidencia_dia.tipo} registrada para hoy."
             )
 
+            fecha_consulta = timezone.localdate()
+
+            if request.method == "GET":
+                fecha_filtro = request.GET.get("fecha_filtro")
+
+                if fecha_filtro:
+                    fecha_consulta = datetime.strptime(
+                        fecha_filtro,
+                        "%Y-%m-%d",
+                    ).date()
+
+            empleados = (
+                Empleado.objects
+                .filter(
+                    empresa=empresa,
+                    activo=True,
+                )
+                .order_by("numero_empleado")
+            )
+
+            asistencias_dia = {
+                asistencia.empleado_id: asistencia
+                for asistencia in Asistencia.objects.filter(
+                    empresa=empresa,
+                    fecha=fecha_consulta,
+                )
+            }
+
+            control_dia = []
+
+            for empleado_control in empleados:
+                asistencia_control = asistencias_dia.get(
+                    empleado_control.id
+                )
+
+                control_dia.append({
+                    "empleado": empleado_control,
+                    "asistencia": asistencia_control,
+                })
+
             return render(
                 request,
                 "control/checador.html",
                 {
                     "mensaje": mensaje,
+                    "fecha_consulta": fecha_consulta,
+                    "control_dia": control_dia,
                 },
             )
-
         # ==========================================================
         # 2. VALIDAR DÍA LABORAL DESPUÉS DE LA INCIDENCIA
         # ==========================================================
@@ -378,17 +420,61 @@ def checador(request):
 
             mensaje = f"{empleado.nombre} - Salida registrada"
 
-        Movimiento.objects.create(
+            Movimiento.objects.create(
             asistencia=asistencia,
             tipo=tipo,
             fecha=hoy,
             hora=hora_registro,
         )
 
+    # ==========================================================
+    # CONTROL DEL DIA
+    # ==========================================================
+    fecha_consulta = timezone.localdate()
+
+    fecha_filtro = request.GET.get("fecha_filtro")
+
+    if fecha_filtro:
+        fecha_consulta = datetime.strptime(
+            fecha_filtro,
+            "%Y-%m-%d",
+        ).date()
+
+    empleados = (
+        Empleado.objects
+        .filter(
+            empresa=empresa,
+            activo=True,
+        )
+        .order_by("numero_empleado")
+    )
+
+    asistencias_dia = {
+        asistencia.empleado_id: asistencia
+        for asistencia in Asistencia.objects.filter(
+            empresa=empresa,
+            fecha=fecha_consulta,
+        )
+    }
+
+    control_dia = []
+
+    for empleado_control in empleados:
+        asistencia_control = asistencias_dia.get(
+            empleado_control.id
+        )
+
+        control_dia.append({
+            "empleado": empleado_control,
+            "asistencia": asistencia_control,
+        })
+
     return render(
         request,
         "control/checador.html",
         {
             "mensaje": mensaje,
+            "fecha_consulta": fecha_consulta,
+            "control_dia": control_dia,
         },
     )
