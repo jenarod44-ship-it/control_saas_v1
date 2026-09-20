@@ -19,11 +19,32 @@
 <form method="post">
     {% csrf_token %}
 
-    <input type="text" name="numero_empleado" placeholder="Número de empleado"
-        style="font-size:20px; padding:10px;"><br><br>
+    <label>Fecha de trabajo</label><br><br>
+
+    <input type="date"
+           name="fecha"
+           value="{% now 'Y-m-d' %}"
+           required
+           style="font-size:20px; padding:10px; width:250px; text-align:center;">
+    <br><br>
+
+    <label>Hora del registro</label><br><br>
+
+    <input type="time"
+           name="hora"
+           required
+           style="font-size:20px; padding:10px; width:250px; text-align:center;">
+    <br><br>
+
+    <input type="text"
+           name="numero_empleado"
+           placeholder="Número de empleado"
+           required
+           style="font-size:20px; padding:10px; width:250px; text-align:center;">
+    <br><br>
 
     <button type="submit"
-        style="font-size:20px; padding:10px 30px; background:#f59e0b;">
+            style="font-size:20px; padding:10px 30px; background:#f59e0b;">
         REGISTRAR
     </button>
 </form>

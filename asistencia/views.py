@@ -116,6 +116,25 @@ def tiempo_extra(request):
 
     if request.method == "POST":
 
+        fecha_seleccionada = request.POST.get("fecha")
+        hora_seleccionada = request.POST.get("hora")
+
+        if fecha_seleccionada:
+            hoy = datetime.strptime(
+                fecha_seleccionada,
+                "%Y-%m-%d",
+            ).date()
+        else:
+            hoy = timezone.localdate()
+
+        if hora_seleccionada:
+            hora_registro = datetime.strptime(
+                hora_seleccionada,
+                "%H:%M",
+            ).time()
+        else:
+            hora_registro = timezone.localtime().time()
+
         numero = request.POST.get("numero_empleado")
 
         if not numero:
@@ -131,7 +150,6 @@ def tiempo_extra(request):
             mensaje = "Empleado no encontrado"
             return render(request, "asistencia/tiempo_extra.html", {"mensaje": mensaje})
 
-        hoy = timezone.localdate()
 
         asistencia = Asistencia.objects.filter(
             empleado=empleado,
@@ -151,14 +169,13 @@ def tiempo_extra(request):
         tiene_inicio = movimientos.filter(tipo="INICIO_TIEMPO_EXTRA").exists()
         tiene_fin = movimientos.filter(tipo="FIN_TIEMPO_EXTRA").exists()
 
-        hora_actual = timezone.localtime().time()
 
         # 🔹 INICIO
         if not tiene_inicio:
             Movimiento.objects.create(
                 asistencia=asistencia,
                 tipo="INICIO_TIEMPO_EXTRA",
-                hora=hora_actual,
+                hora=hora_registro,
                 fecha=hoy
             )
             mensaje = f"{empleado.nombre} - Inicio de tiempo extra"
@@ -168,7 +185,7 @@ def tiempo_extra(request):
             Movimiento.objects.create(
                 asistencia=asistencia,
                 tipo="FIN_TIEMPO_EXTRA",
-                hora=hora_actual,
+                hora=hora_registro,
                 fecha=hoy
             )
             mensaje = f"{empleado.nombre} - Fin de tiempo extra"
