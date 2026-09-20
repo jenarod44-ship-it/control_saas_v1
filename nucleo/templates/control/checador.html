@@ -27,6 +27,15 @@
 <form method="post">
     {% csrf_token %}
 
+    <label>Fecha de trabajo</label><br><br>
+
+    <input type="date"
+            name="fecha"
+            value="{% now 'Y-m-d' %}"
+            required
+            style="font-size:20px; padding:10px; width:250px; text-align:center;">
+    <br><br>
+
     <label>Número de empleado</label><br><br>
 
     <input type="text" name="numero_empleado" required

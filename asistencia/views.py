@@ -9,6 +9,7 @@ from asistencia.models import Asistencia, Movimiento
 from core.decorators import solo_operativo
 from core.models import IncidenciaDia
 from django.contrib import messages
+from datetime import datetime
 
 
 
@@ -34,7 +35,7 @@ def permisos(request):
 
         else:
             hoy = timezone.localdate()
-            ahora = timezone.localtime()
+            now = timezone.localtime()
 
             asistencia = Asistencia.objects.filter(
                 empresa=empresa,
@@ -226,7 +227,17 @@ def checador(request):
                 },
             )
 
-        hoy = timezone.localdate()
+        
+        fecha_seleccionada = request.POST.get("fecha")
+
+        if fecha_seleccionada:
+            hoy = datetime.strptime(
+                fecha_seleccionada,
+                "%Y-%m-%d",
+            ).date()
+        else:
+            hoy = timezone.localdate()
+
         now = timezone.localtime()
 
         # ==========================================================
