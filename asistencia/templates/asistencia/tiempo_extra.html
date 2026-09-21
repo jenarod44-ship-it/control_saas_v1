@@ -35,6 +35,35 @@
                     {% csrf_token %}
 
                     <div class="mb-4">
+                        <label for="fecha" class="form-label">
+                            Fecha de trabajo
+                        </label>
+
+                        <input
+                            type="date"
+                            name="fecha"
+                            id="fecha"
+                            class="form-control form-control-lg text-center"
+                            value="{% now 'Y-m-d' %}"
+                            required
+                        >
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="hora" class="form-label">
+                            Hora del registro
+                        </label>
+
+                        <input
+                            type="time"
+                            name="hora"
+                            id="hora"
+                            class="form-control form-control-lg text-center"
+                            required
+                        >
+                    </div>
+
+                    <div class="mb-4">
                         <label for="numero_empleado" class="form-label">
                             Número de empleado
                         </label>
