@@ -16,38 +16,62 @@
 <div class="card shadow border-0 mb-4">
     <div class="card-body">
 
-        <form method="get" class="row g-3 align-items-end">
+        <form method="get" class="row g-2 align-items-end">
 
-            <div class="col-md-3">
-                <label class="form-label">Fecha inicio</label>
-                <input type="date" name="inicio" value="{{ request.GET.inicio }}" class="form-control">
-            </div>
+    <div class="col-md-2">
+        <label class="form-label">Fecha inicio</label>
+        <input type="date"
+               name="inicio"
+               value="{{ request.GET.inicio }}"
+               class="form-control">
+    </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Fecha fin</label>
-                <input type="date" name="fin" value="{{ request.GET.fin }}" class="form-control">
-            </div>
+    <div class="col-md-2">
+        <label class="form-label">Fecha fin</label>
+        <input type="date"
+               name="fin"
+               value="{{ request.GET.fin }}"
+               class="form-control">
+    </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Empleado</label>
-                <select name="empleado" class="form-select">
-                    <option value="">Todos</option>
-                    {% for e in empleados %}
-                    <option value="{{ e.id }}" {% if request.GET.empleado == e.id|stringformat:"s" %}selected{% endif %}>
-                        {{ e.numero_empleado }} - {{ e.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
+    <div class="col-md-2">
+        <label class="form-label">Departamento</label>
+        <select name="departamento" class="form-select">
+            <option value="">Todos</option>
+            {% for d in departamentos %}
+            <option value="{{ d.id }}"
+                {% if request.GET.departamento == d.id|stringformat:"s" %}selected{% endif %}>
+                {{ d.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
 
-            <div class="col-md-3 d-grid gap-2">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <a href="{% url 'reportes:reporte_excel_xlsx' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-                    Exportar Excel
-                </a>
-            </div>
+    <div class="col-md-4">
+        <label class="form-label">Empleado</label>
+        <select name="empleado" class="form-select">
+            <option value="">Todos</option>
+            {% for e in empleados %}
+            <option value="{{ e.id }}"
+                {% if request.GET.empleado == e.id|stringformat:"s" %}selected{% endif %}>
+                {{ e.numero_empleado }} - {{ e.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
 
-        </form>
+    <div class="col-md-2 d-grid gap-2">
+        <button type="submit" class="btn btn-primary">
+            Filtrar
+        </button>
+
+        <a href="{% url 'reportes:reporte_excel_xlsx' %}?{{ request.GET.urlencode }}"
+           class="btn btn-success">
+            Exportar Excel
+        </a>
+    </div>
+
+</form>
 
     </div>
 </div>

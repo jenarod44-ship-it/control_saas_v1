@@ -255,7 +255,7 @@ def calcular_incidencias_asistencia(empleado, fecha):
 
 @solo_operativo
 def reporte_asistencia(request):
-    from nucleo.models import Empleado
+    from nucleo.models import Empleado, Departamento
     
 
 
@@ -276,6 +276,11 @@ def reporte_asistencia(request):
         activo=True
     )
 
+    departamentos = Departamento.objects.filter(
+        empresa=empresa,
+        activo=True
+    ).order_by("nombre")
+
     
 
     registros = list(registros)  # 🔥 FORZAR evaluación
@@ -292,6 +297,8 @@ def reporte_asistencia(request):
         "inicio": request.GET.get("inicio"),
         "fin": request.GET.get("fin"),
         "empleado_id": request.GET.get("empleado"),
+        "departamentos": departamentos,
+        "departamento_id": request.GET.get("departamento"),
     })
 
 
@@ -308,11 +315,17 @@ def obtener_asistencias_base(request):
 
 def aplicar_filtros_asistencia(request, queryset):
     empleado_id = request.GET.get("empleado")
+    departamento_id = request.GET.get("departamento")
     inicio = request.GET.get("inicio")
     fin = request.GET.get("fin")
 
     if empleado_id and empleado_id not in ["", "0"]:
         queryset = queryset.filter(empleado_id=empleado_id)
+
+    if departamento_id and departamento_id not in ["", "0"]:
+        queryset = queryset.filter(
+            empleado__departamento_id=departamento_id
+        )
 
     if inicio:
         queryset = queryset.filter(fecha__gte=inicio)
