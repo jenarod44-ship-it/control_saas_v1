@@ -81,64 +81,100 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Resultados</h5>
-            <span class="badge bg-secondary">Total: {{ resultados|length }}</span>
+            <span class="badge bg-secondary">Empleados: {{ matriz_semanal|length }}</span>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-bordered table-sm align-middle">
+            <table class="table table-bordered table-sm align-middle">
 
                 <thead class="table-dark text-center">
                     <tr>
-                        <th>No. empleado</th>
-                        <th>Empleado</th>
-                        <th>Fecha</th>
-                        <th>Entrada</th>
-                        <th>Salida</th>
-                        <th>Estado</th>
-                        <th>Incidencias</th>
+                        <th rowspan="2" class="align-middle">No.</th>
+                        <th rowspan="2" class="align-middle">Empleado</th>
+
+                        {% for fecha in dias_semana %}
+                            <th colspan="2">
+                                {% if forloop.counter == 1 %}Jueves
+                                {% elif forloop.counter == 2 %}Viernes
+                                {% elif forloop.counter == 3 %}Sabado
+                                {% elif forloop.counter == 4 %}Domingo
+                                {% elif forloop.counter == 5 %}Lunes
+                                {% elif forloop.counter == 6 %}Martes
+                                {% elif forloop.counter == 7 %}Miercoles
+                                {% endif %}
+                                <br>
+                                <small>{{ fecha|date:"d/m/Y" }}</small>
+                            </th>
+                        {% endfor %}
+                    </tr>
+
+                    <tr>
+                        {% for fecha in dias_semana %}
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                        {% endfor %}
                     </tr>
                 </thead>
 
                 <tbody>
-                    {% for r in resultados %}
-                    <tr>
-                        <td class="text-center">{{ r.empleado.numero_empleado }}</td>
-                        <td>{{ r.empleado.nombre }}</td>
-                        <td class="text-center">{{ r.fecha }}</td>
-                        <td class="text-center">{{ r.hora_entrada|default:"--" }}</td>
-                        <td class="text-center">{{ r.hora_salida|default:"--" }}</td>
+                    {% for fila in matriz_semanal %}
+                        <tr>
+                            <td class="text-center">
+                                {{ fila.empleado.numero_empleado }}
+                            </td>
 
-                        <td class="text-center">
-                            {% if r.estado == "RETARDO" %}
-                                <span class="badge bg-warning text-dark">RETARDO</span>
-                            {% elif r.estado == "FALTA" %}
-                                <span class="badge bg-danger">FALTA</span>
-                            {% elif r.estado == "INCIDENCIA" %}
-                                <span class="badge bg-primary">INCIDENCIA</span>
-                            {% elif r.estado == "OK" %}
-                                <span class="badge bg-success">PRESENTE</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ r.estado|default:"--" }}</span>
-                            {% endif %}
-                        </td>
+                            <td>
+                                {{ fila.empleado.nombre }}
+                            </td>
 
-                        <td>
-                            {% if r.incidencias %}
-                                {% for i in r.incidencias %}
-                                    <span class="badge bg-primary">{{ i }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="badge bg-success">OK</span>
-                            {% endif %}
-                        </td>
-                    </tr>
+                            {% for dia in fila.dias %}
+
+                                {% if dia.tipo_incidencia %}
+                                    <td colspan="2" class="text-center fw-bold">
+                                        {{ dia.tipo_incidencia }}
+                                    </td>
+
+                                {% elif dia.es_falta %}
+                                    <td colspan="2" class="text-center fw-bold text-danger">
+                                        FALTA
+                                    </td>
+
+                                {% elif dia.estado == "NO_LABORAL" %}
+                                    <td colspan="2" class="text-center text-muted">
+                                        NO LABORAL
+                                    </td>
+
+                                {% else %}
+                                    <td class="text-center {% if dia.es_retardo %}fw-bold bg-warning{% endif %}">
+                                        {% if dia.entrada %}
+                                            {{ dia.entrada|time:"H:i" }}
+                                        {% else %}
+                                            --
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="text-center">
+                                        {% if dia.salida %}
+                                            {{ dia.salida|time:"H:i" }}
+                                        {% else %}
+                                            {% if dia.es_incompleto or dia.es_irregular %}
+                                                <strong>FALTA REG.</strong>
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+
+                            {% endfor %}
+                        </tr>
 
                     {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            No hay resultados para mostrar.
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="16" class="text-center text-muted">
+                                Seleccione una fecha para generar la semana.
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
 

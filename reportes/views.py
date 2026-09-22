@@ -410,8 +410,14 @@ def reporte_asistencia(request):
             fila["dias"].append({
                 "fecha": fecha_dia,
                 "asistencia": asistencia_dia,
+                "entrada": resultado.get("entrada"),
+                "salida": resultado.get("salida"),
                 "estado": resultado.get("estado"),
-                "resultado": resultado,
+                "tipo_incidencia": resultado.get("tipo_incidencia"),
+                "es_retardo": resultado.get("es_retardo"),
+                "es_falta": resultado.get("es_falta"),
+                "es_incompleto": resultado.get("es_incompleto"),
+                "es_irregular": resultado.get("es_irregular"),
             })
 
         matriz_semanal.append(fila)
