@@ -1,4 +1,9 @@
 from core.utils.asistencia import calcular_estado_asistencia
+from datetime import datetime, timedelta
+from asistencia.models import Asistencia, Movimiento
+from core.models import IncidenciaDia
+from core.calculadora import CalculadoraAsistencia
+
 from reportes.services.asistencia import (
     aplicar_filtros_asistencia,
     calcular_incidencias_asistencia,
@@ -139,4 +144,204 @@ def construir_reporte_asistencia(request):
             6: COLORES_ESTADO,
             7: COLORES_INCIDENCIA,
         },
+    }
+
+def crear_reporte_asistencia_semanal(request):
+    """
+    Genera los datos del reporte semanal de asistencia.
+
+    Semana operativa:
+    jueves a miércoles.
+    """
+
+    from nucleo.models import Empleado
+
+    empresa = request.empresa
+    inicio = request.GET.get("inicio")
+
+    # ==========================================
+    # SEMANA OPERATIVA: JUEVES A MIERCOLES
+    # ==========================================
+    dias_semana = []
+
+    if inicio:
+        fecha_seleccionada = datetime.strptime(
+            inicio,
+            "%Y-%m-%d",
+        ).date()
+
+        dias_desde_jueves = (
+            fecha_seleccionada.weekday() - 3
+        ) % 7
+
+        fecha_inicio = (
+            fecha_seleccionada
+            - timedelta(days=dias_desde_jueves)
+        )
+
+        dias_semana = [
+            fecha_inicio + timedelta(days=i)
+            for i in range(7)
+        ]
+
+    # ==========================================
+    # EMPLEADOS
+    # ==========================================
+    empleados = Empleado.objects.filter(
+        empresa=empresa,
+        activo=True,
+    )
+
+    departamento_id = request.GET.get("departamento")
+    empleado_id = request.GET.get("empleado")
+
+    if departamento_id and departamento_id not in ["", "0"]:
+        empleados = empleados.filter(
+            departamento_id=departamento_id
+        )
+
+    if empleado_id and empleado_id not in ["", "0"]:
+        empleados = empleados.filter(
+            id=empleado_id
+        )
+
+    empleados = empleados.order_by(
+        "numero_empleado"
+    )
+
+    # ==========================================
+    # ASISTENCIAS
+    # ==========================================
+    asistencias_semana = {}
+
+    if dias_semana:
+        asistencias_qs = Asistencia.objects.filter(
+            empresa=empresa,
+            empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        )
+
+        asistencias_semana = {
+            (
+                asistencia.empleado_id,
+                asistencia.fecha,
+            ): asistencia
+            for asistencia in asistencias_qs
+        }
+
+    # ==========================================
+    # MOVIMIENTOS
+    # ==========================================
+    movimientos_semana = {}
+
+    if dias_semana:
+        movimientos_qs = Movimiento.objects.filter(
+            asistencia__empresa=empresa,
+            asistencia__empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        ).select_related(
+            "asistencia",
+            "asistencia__empleado",
+        )
+
+        for movimiento in movimientos_qs:
+            clave = (
+                movimiento.asistencia.empleado_id,
+                movimiento.fecha,
+            )
+
+            movimientos_semana.setdefault(
+                clave,
+                [],
+            ).append(movimiento)
+
+    # ==========================================
+    # INCIDENCIAS
+    # ==========================================
+    incidencias_semana = {}
+
+    if dias_semana:
+        incidencias_qs = IncidenciaDia.objects.filter(
+            empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        ).select_related(
+            "empleado",
+            "incidencia",
+        )
+
+        incidencias_semana = {
+            (
+                incidencia.empleado_id,
+                incidencia.fecha,
+            ): incidencia
+            for incidencia in incidencias_qs
+        }
+
+    # ==========================================
+    # MATRIZ SEMANAL
+    # ==========================================
+    matriz_semanal = []
+
+    for empleado_matriz in empleados:
+        fila = {
+            "empleado": empleado_matriz,
+            "dias": [],
+        }
+
+        for fecha_dia in dias_semana:
+            clave = (
+                empleado_matriz.id,
+                fecha_dia,
+            )
+
+            asistencia_dia = asistencias_semana.get(clave)
+            movimientos_dia = movimientos_semana.get(
+                clave,
+                [],
+            )
+            incidencia_dia = incidencias_semana.get(clave)
+
+            calculadora = CalculadoraAsistencia(
+                empleado_matriz,
+                fecha_dia,
+                movimientos=movimientos_dia,
+                asistencia=asistencia_dia,
+                incidencia_dia=incidencia_dia,
+            )
+
+            resultado = calculadora.calcular()
+
+            fila["dias"].append({
+                "fecha": fecha_dia,
+                "entrada": resultado.get("entrada"),
+                "salida": resultado.get("salida"),
+                "estado": resultado.get("estado"),
+                "tipo_incidencia": resultado.get(
+                    "tipo_incidencia"
+                ),
+                "es_retardo": resultado.get("es_retardo"),
+                "es_falta": resultado.get("es_falta"),
+                "es_incompleto": resultado.get(
+                    "es_incompleto"
+                ),
+                "es_irregular": resultado.get(
+                    "es_irregular"
+                ),
+            })
+
+        matriz_semanal.append(fila)
+
+    return {
+        "dias_semana": dias_semana,
+        "empleados": empleados,
+        "matriz_semanal": matriz_semanal,
     }
