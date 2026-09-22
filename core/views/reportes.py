@@ -57,7 +57,19 @@ def estado_dia(request):
             tipo="FIN_TIEMPO_EXTRA"
         ).first()
 
-        calc = CalculadoraAsistencia(empleado, fecha, movimientos)
+        asistencia = Asistencia.objects.filter(
+            empresa=empresa,
+            empleado=empleado,
+            fecha=fecha,
+        ).first()
+
+        calc = CalculadoraAsistencia(
+            empleado,
+            fecha,
+            movimientos=movimientos,
+            asistencia=asistencia,
+        )
+        
         resultado = calc.calcular()
 
         estado = resultado["estado"]

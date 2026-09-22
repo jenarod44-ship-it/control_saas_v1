@@ -33,6 +33,11 @@ def dashboard(request):
         ).select_related("empleado")
     )
 
+    asistencia_por_empleado = {
+        asistencia.empleado_id: asistencia
+        for asistencia in asistencias
+    }
+
     movimientos = list(
         Movimiento.objects.filter(
             asistencia__empleado__empresa=empresa,
@@ -68,9 +73,10 @@ def dashboard(request):
         calculadora = CalculadoraAsistencia(
             empleado,
             hoy,
-            movimientos_empleado,
+            movimientos=movimientos_empleado,
+            asistencia=asistencia_por_empleado.get(empleado.id),
         )
-
+        
         resultado = calculadora.calcular()
         
 
