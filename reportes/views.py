@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.contrib import messages
 from django.shortcuts import redirect
 from core.utils.asistencia import calcular_estado_asistencia
@@ -103,6 +105,7 @@ from core.excel.respuesta import crear_respuesta_excel
 from core.services.prenomina_service import ResumenPrenomina
 from nucleo.models import Departamento, Empleado
 from core.services.asistencia_service import obtener_tiempo_extra
+from core.calculadora import CalculadoraAsistencia
 
 
 def calcular_estado_asistencia(empleado, fecha):
@@ -261,6 +264,27 @@ def reporte_asistencia(request):
 
     empresa = request.empresa
 
+    inicio = request.GET.get("inicio")
+
+    dias_semana = []
+
+    if inicio:
+        fecha_seleccionada = datetime.strptime(
+            inicio,
+            "%Y-%m-%d",
+        ).date()
+
+        # La semana operativa siempre inicia en jueves.
+        dias_desde_jueves = (fecha_seleccionada.weekday() - 3) % 7
+        fecha_inicio = fecha_seleccionada - timedelta(
+            days=dias_desde_jueves
+        )
+
+        dias_semana = [
+            fecha_inicio + timedelta(days=i)
+            for i in range(7)
+        ]
+
     print("EMPRESA ACTUAL:", request.empresa)
 
 
@@ -275,6 +299,122 @@ def reporte_asistencia(request):
         empresa=empresa,
         activo=True
     )
+
+    departamento_id = request.GET.get("departamento")
+    empleado_id = request.GET.get("empleado")
+
+    if departamento_id and departamento_id not in ["", "0"]:
+        empleados = empleados.filter(
+            departamento_id=departamento_id
+        )
+
+    if empleado_id and empleado_id not in ["", "0"]:
+        empleados = empleados.filter(
+            id=empleado_id
+        )
+
+    empleados = empleados.order_by(
+        "numero_empleado"
+    )
+
+    asistencias_semana = {}
+
+    if dias_semana:
+        asistencias_qs = Asistencia.objects.filter(
+            empresa=empresa,
+            empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        )
+
+        asistencias_semana = {
+            (asistencia.empleado_id, asistencia.fecha): asistencia
+            for asistencia in asistencias_qs
+        }
+
+    movimientos_semana = {}
+
+    if dias_semana:
+        movimientos_qs = Movimiento.objects.filter(
+            asistencia__empresa=empresa,
+            asistencia__empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        ).select_related(
+            "asistencia",
+            "asistencia__empleado",
+        )
+
+        for movimiento in movimientos_qs:
+            clave = (
+                movimiento.asistencia.empleado_id,
+                movimiento.fecha,
+            )
+
+            movimientos_semana.setdefault(
+                clave,
+                []
+            ).append(movimiento)
+
+    incidencias_semana = {}
+
+    if dias_semana:
+        incidencias_qs = IncidenciaDia.objects.filter(
+            empleado__in=empleados,
+            fecha__range=(
+                dias_semana[0],
+                dias_semana[-1],
+            ),
+        ).select_related(
+            "empleado",
+            "incidencia",
+        )
+
+        incidencias_semana = {
+            (incidencia.empleado_id, incidencia.fecha): incidencia
+            for incidencia in incidencias_qs
+        }
+
+    matriz_semanal = []
+
+    for empleado_matriz in empleados:
+        fila = {
+            "empleado": empleado_matriz,
+            "dias": [],
+        }
+
+        for fecha_dia in dias_semana:
+            clave = (
+                empleado_matriz.id,
+                fecha_dia,
+            )
+
+            asistencia_dia = asistencias_semana.get(clave)
+            movimientos_dia = movimientos_semana.get(clave, [])
+            incidencia_dia = incidencias_semana.get(clave)
+
+            calculadora = CalculadoraAsistencia(
+                empleado_matriz,
+                fecha_dia,
+                movimientos=movimientos_dia,
+                asistencia=asistencia_dia,
+                incidencia_dia=incidencia_dia,
+            )
+
+            resultado = calculadora.calcular()
+
+            fila["dias"].append({
+                "fecha": fecha_dia,
+                "asistencia": asistencia_dia,
+                "estado": resultado.get("estado"),
+                "resultado": resultado,
+            })
+
+        matriz_semanal.append(fila)
 
     departamentos = Departamento.objects.filter(
         empresa=empresa,
@@ -299,6 +439,8 @@ def reporte_asistencia(request):
         "empleado_id": request.GET.get("empleado"),
         "departamentos": departamentos,
         "departamento_id": request.GET.get("departamento"),
+        "dias_semana": dias_semana,
+        "matriz_semanal": matriz_semanal,
     })
 
 
