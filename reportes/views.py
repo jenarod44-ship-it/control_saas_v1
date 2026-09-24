@@ -4,8 +4,9 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from core.utils.asistencia import calcular_estado_asistencia
 from reportes.services.incidencias import obtener_incidencias
-from reportes.adapters.incidencias_excel import (
-    construir_reporte_incidencias,
+from reportes.adapters.asistencia_excel import (
+    construir_reporte_asistencia,
+    crear_reporte_asistencia_semanal,
 )
 
 from reportes.adapters.prenomina_excel import (
@@ -1032,12 +1033,7 @@ def reporte_excel(request):
 
 @solo_operativo
 def reporte_excel_xlsx(request):
-
-    configuracion = construir_reporte_asistencia(request)
-
-    return crear_reporte_excel(
-        **configuracion
-    )
+    return crear_reporte_asistencia_semanal(request)
     
 
    
