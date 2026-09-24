@@ -342,286 +342,287 @@ def crear_reporte_asistencia_semanal(request):
 
         matriz_semanal.append(fila)
 
-        # ==========================================
-        # CREAR LIBRO Y HOJA
-        # ==========================================
-        wb = Workbook()
-        ws = wb.active
+    # ==========================================
+    # CREAR LIBRO Y HOJA
+    # ==========================================
+    wb = Workbook()
+    hoja_inicial = wb.active
+    wb.remove(hoja_inicial)
 
-        departamento_reporte = departamentos.first()
+    for departamento_reporte in departamentos:
 
         if departamento_reporte:
-            ws.title = departamento_reporte.nombre[:31]
+            ws = wb.create_sheet(title=departamento_reporte.nombre[:31])
         else:
-            ws.title = "Asistencia"
+            ws = wb.create_sheet(title="Asistencia")
 
-    escribir_encabezado_reporte(
-        ws=ws,
-        titulo="REPORTE SEMANAL DE ASISTENCIA",
-        empresa=empresa,
-        inicio=dias_semana[0] if dias_semana else None,
-        fin=dias_semana[-1] if dias_semana else None,
-        ultima_columna="P",
-    )
+        escribir_encabezado_reporte(
+            ws=ws,
+            titulo="REPORTE SEMANAL DE ASISTENCIA",
+            empresa=empresa,
+            inicio=dias_semana[0] if dias_semana else None,
+            fin=dias_semana[-1] if dias_semana else None,
+            ultima_columna="P",
+        )
 
-    if departamento_reporte:
-        ws.merge_cells("A5:P5")
-        celda_departamento = ws["A5"]
-        celda_departamento.value = f"Departamento: {departamento_reporte.nombre}"
-        celda_departamento.font = FUENTE_NEGRITA
-        celda_departamento.alignment = ALINEACION_IZQUIERDA
+        if departamento_reporte:
+            ws.merge_cells("A5:P5")
+            celda_departamento = ws["A5"]
+            celda_departamento.value = f"Departamento: {departamento_reporte.nombre}"
+            celda_departamento.font = FUENTE_NEGRITA
+            celda_departamento.alignment = ALINEACION_IZQUIERDA
 
-    # ==========================================
-    # ENCABEZADOS DE DOS NIVELES
-    # ==========================================
-    fila_dias = 6
-    fila_horas = 7
+        # ==========================================
+        # ENCABEZADOS DE DOS NIVELES
+        # ==========================================
+        fila_dias = 6
+        fila_horas = 7
 
-    ws.merge_cells(
-        start_row=fila_dias,
-        start_column=1,
-        end_row=fila_horas,
-        end_column=1,
-    )
-    ws.cell(
-        row=fila_dias,
-        column=1,
-        value="No.",
-    )
-
-    ws.merge_cells(
-        start_row=fila_dias,
-        start_column=2,
-        end_row=fila_horas,
-        end_column=2,
-    )
-    ws.cell(
-        row=fila_dias,
-        column=2,
-        value="Empleado",
-    )
-
-    nombres_dias = [
-        "Jueves",
-        "Viernes",
-        "Sabado",
-        "Domingo",
-        "Lunes",
-        "Martes",
-        "Miercoles",
-    ]
-
-    columna = 3
-
-    for nombre_dia, fecha_dia in zip(
-        nombres_dias,
-        dias_semana,
-    ):
         ws.merge_cells(
             start_row=fila_dias,
-            start_column=columna,
-            end_row=fila_dias,
-            end_column=columna + 1,
+            start_column=1,
+            end_row=fila_horas,
+            end_column=1,
         )
-
         ws.cell(
             row=fila_dias,
-            column=columna,
-            value=(f"{nombre_dia}\n" f"{fecha_dia.strftime('%d/%m/%Y')}"),
-        )
-
-        ws.cell(
-            row=fila_horas,
-            column=columna,
-            value="Entrada",
-        )
-
-        ws.cell(
-            row=fila_horas,
-            column=columna + 1,
-            value="Salida",
-        )
-
-        columna += 2
-
-    # Aplicar estilo a las 16 columnas
-    for fila in range(fila_dias, fila_horas + 1):
-        for columna in range(1, 17):
-            celda = ws.cell(
-                row=fila,
-                column=columna,
-            )
-            celda.font = FUENTE_ENCABEZADO
-            celda.fill = RELLENO_TITULO
-            celda.alignment = ALINEACION_CENTRO
-            celda.border = BORDE_FINO
-
-    ws.row_dimensions[fila_dias].height = 34
-    ws.row_dimensions[fila_horas].height = 22
-
-    # Anchos iniciales
-    ws.column_dimensions["A"].width = 10
-    ws.column_dimensions["B"].width = 30
-
-    for columna in range(3, 17):
-        ws.column_dimensions[get_column_letter(columna)].width = 11
-
-    # ==========================================
-    # DATOS DE EMPLEADOS
-    # ==========================================
-    fila_actual = 8
-
-    matriz_departamento = [
-        fila
-        for fila in matriz_semanal
-        if (
-            departamento_reporte
-            and fila["empleado"].departamento_id == departamento_reporte.id
-        )
-    ]
-
-    for fila_matriz in matriz_departamento:
-        empleado = fila_matriz["empleado"]
-
-        celda_numero = ws.cell(
-            row=fila_actual,
             column=1,
-            value=empleado.numero_empleado,
+            value="No.",
         )
-        celda_numero.alignment = ALINEACION_CENTRO
-        celda_numero.border = BORDE_FINO
 
-        celda_nombre = ws.cell(
-            row=fila_actual,
-            column=2,
-            value=empleado.nombre,
+        ws.merge_cells(
+            start_row=fila_dias,
+            start_column=2,
+            end_row=fila_horas,
+            end_column=2,
         )
-        celda_nombre.alignment = ALINEACION_IZQUIERDA
-        celda_nombre.border = BORDE_FINO
+        ws.cell(
+            row=fila_dias,
+            column=2,
+            value="Empleado",
+        )
+
+        nombres_dias = [
+            "Jueves",
+            "Viernes",
+            "Sabado",
+            "Domingo",
+            "Lunes",
+            "Martes",
+            "Miercoles",
+        ]
 
         columna = 3
 
-        for dia in fila_matriz["dias"]:
+        for nombre_dia, fecha_dia in zip(
+            nombres_dias,
+            dias_semana,
+        ):
+            ws.merge_cells(
+                start_row=fila_dias,
+                start_column=columna,
+                end_row=fila_dias,
+                end_column=columna + 1,
+            )
 
-            # Incidencia: ocupa Entrada + Salida
-            if dia["tipo_incidencia"]:
-                ws.merge_cells(
-                    start_row=fila_actual,
-                    start_column=columna,
-                    end_row=fila_actual,
-                    end_column=columna + 1,
-                )
+            ws.cell(
+                row=fila_dias,
+                column=columna,
+                value=(f"{nombre_dia}\n" f"{fecha_dia.strftime('%d/%m/%Y')}"),
+            )
 
-                celda = ws.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value=dia["tipo_incidencia"],
-                )
-                celda.fill = RELLENO_GRIS
-                celda.font = FUENTE_NEGRITA
-                celda.alignment = ALINEACION_CENTRO
+            ws.cell(
+                row=fila_horas,
+                column=columna,
+                value="Entrada",
+            )
 
-            # Falta: ocupa Entrada + Salida
-            elif dia["es_falta"]:
-                ws.merge_cells(
-                    start_row=fila_actual,
-                    start_column=columna,
-                    end_row=fila_actual,
-                    end_column=columna + 1,
-                )
-
-                celda = ws.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value="FALTA",
-                )
-                celda.fill = RELLENO_ERROR
-                celda.font = FUENTE_NEGRITA
-                celda.alignment = ALINEACION_CENTRO
-
-            # Día no laboral
-            elif dia["estado"] == "NO_LABORAL":
-                ws.merge_cells(
-                    start_row=fila_actual,
-                    start_column=columna,
-                    end_row=fila_actual,
-                    end_column=columna + 1,
-                )
-
-                celda = ws.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value="NO LABORAL",
-                )
-                celda.fill = RELLENO_GRIS
-                celda.alignment = ALINEACION_CENTRO
-
-            # Día futuro
-            elif dia["estado"] == "FUTURO":
-                ws.merge_cells(
-                    start_row=fila_actual,
-                    start_column=columna,
-                    end_row=fila_actual,
-                    end_column=columna + 1,
-                )
-
-                celda = ws.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value="--",
-                )
-                celda.alignment = ALINEACION_CENTRO
-
-            # Día con registros
-            else:
-                entrada = ws.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value=dia["entrada"] or "--",
-                )
-
-                salida = ws.cell(
-                    row=fila_actual,
-                    column=columna + 1,
-                    value=dia["salida"] or "--",
-                )
-
-                entrada.alignment = ALINEACION_CENTRO
-                salida.alignment = ALINEACION_CENTRO
-
-                entrada.border = BORDE_FINO
-                salida.border = BORDE_FINO
-
-                if dia["entrada"]:
-                    entrada.number_format = "hh:mm"
-
-                if dia["salida"]:
-                    salida.number_format = "hh:mm"
-
-                if dia["es_retardo"]:
-                    entrada.fill = RELLENO_ALERTA
-                    entrada.font = FUENTE_NEGRITA
-
-                if dia["es_incompleto"] or dia["es_irregular"]:
-                    if not dia["entrada"]:
-                        entrada.value = "FALTA REG."
-
-                    if not dia["salida"]:
-                        salida.value = "FALTA REG."
-
-            # Asegurar bordes en ambas posiciones del día
-            for numero_columna in (
-                columna,
-                columna + 1,
-            ):
-                ws.cell(
-                    row=fila_actual,
-                    column=numero_columna,
-                ).border = BORDE_FINO
+            ws.cell(
+                row=fila_horas,
+                column=columna + 1,
+                value="Salida",
+            )
 
             columna += 2
 
-        fila_actual += 1
+        # Aplicar estilo a las 16 columnas
+        for fila in range(fila_dias, fila_horas + 1):
+            for columna in range(1, 17):
+                celda = ws.cell(
+                    row=fila,
+                    column=columna,
+                )
+                celda.font = FUENTE_ENCABEZADO
+                celda.fill = RELLENO_TITULO
+                celda.alignment = ALINEACION_CENTRO
+                celda.border = BORDE_FINO
+
+        ws.row_dimensions[fila_dias].height = 34
+        ws.row_dimensions[fila_horas].height = 22
+
+        # Anchos iniciales
+        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["B"].width = 30
+
+        for columna in range(3, 17):
+            ws.column_dimensions[get_column_letter(columna)].width = 11
+
+        # ==========================================
+        # DATOS DE EMPLEADOS
+        # ==========================================
+        fila_actual = 8
+
+        matriz_departamento = [
+            fila
+            for fila in matriz_semanal
+            if (
+                departamento_reporte
+                and fila["empleado"].departamento_id == departamento_reporte.id
+            )
+        ]
+
+        for fila_matriz in matriz_departamento:
+            empleado = fila_matriz["empleado"]
+
+            celda_numero = ws.cell(
+                row=fila_actual,
+                column=1,
+                value=empleado.numero_empleado,
+            )
+            celda_numero.alignment = ALINEACION_CENTRO
+            celda_numero.border = BORDE_FINO
+
+            celda_nombre = ws.cell(
+                row=fila_actual,
+                column=2,
+                value=empleado.nombre,
+            )
+            celda_nombre.alignment = ALINEACION_IZQUIERDA
+            celda_nombre.border = BORDE_FINO
+
+            columna = 3
+
+            for dia in fila_matriz["dias"]:
+
+                # Incidencia: ocupa Entrada + Salida
+                if dia["tipo_incidencia"]:
+                    ws.merge_cells(
+                        start_row=fila_actual,
+                        start_column=columna,
+                        end_row=fila_actual,
+                        end_column=columna + 1,
+                    )
+
+                    celda = ws.cell(
+                        row=fila_actual,
+                        column=columna,
+                        value=dia["tipo_incidencia"],
+                    )
+                    celda.fill = RELLENO_GRIS
+                    celda.font = FUENTE_NEGRITA
+                    celda.alignment = ALINEACION_CENTRO
+
+                # Falta: ocupa Entrada + Salida
+                elif dia["es_falta"]:
+                    ws.merge_cells(
+                        start_row=fila_actual,
+                        start_column=columna,
+                        end_row=fila_actual,
+                        end_column=columna + 1,
+                    )
+
+                    celda = ws.cell(
+                        row=fila_actual,
+                        column=columna,
+                        value="FALTA",
+                    )
+                    celda.fill = RELLENO_ERROR
+                    celda.font = FUENTE_NEGRITA
+                    celda.alignment = ALINEACION_CENTRO
+
+                # Día no laboral
+                elif dia["estado"] == "NO_LABORAL":
+                    ws.merge_cells(
+                        start_row=fila_actual,
+                        start_column=columna,
+                        end_row=fila_actual,
+                        end_column=columna + 1,
+                    )
+
+                    celda = ws.cell(
+                        row=fila_actual,
+                        column=columna,
+                        value="NO LABORAL",
+                    )
+                    celda.fill = RELLENO_GRIS
+                    celda.alignment = ALINEACION_CENTRO
+
+                # Día futuro
+                elif dia["estado"] == "FUTURO":
+                    ws.merge_cells(
+                        start_row=fila_actual,
+                        start_column=columna,
+                        end_row=fila_actual,
+                        end_column=columna + 1,
+                    )
+
+                    celda = ws.cell(
+                        row=fila_actual,
+                        column=columna,
+                        value="--",
+                    )
+                    celda.alignment = ALINEACION_CENTRO
+
+                # Día con registros
+                else:
+                    entrada = ws.cell(
+                        row=fila_actual,
+                        column=columna,
+                        value=dia["entrada"] or "--",
+                    )
+
+                    salida = ws.cell(
+                        row=fila_actual,
+                        column=columna + 1,
+                        value=dia["salida"] or "--",
+                    )
+
+                    entrada.alignment = ALINEACION_CENTRO
+                    salida.alignment = ALINEACION_CENTRO
+
+                    entrada.border = BORDE_FINO
+                    salida.border = BORDE_FINO
+
+                    if dia["entrada"]:
+                        entrada.number_format = "hh:mm"
+
+                    if dia["salida"]:
+                        salida.number_format = "hh:mm"
+
+                    if dia["es_retardo"]:
+                        entrada.fill = RELLENO_ALERTA
+                        entrada.font = FUENTE_NEGRITA
+
+                    if dia["es_incompleto"] or dia["es_irregular"]:
+                        if not dia["entrada"]:
+                            entrada.value = "FALTA REG."
+
+                        if not dia["salida"]:
+                            salida.value = "FALTA REG."
+
+                # Asegurar bordes en ambas posiciones del día
+                for numero_columna in (
+                    columna,
+                    columna + 1,
+                ):
+                    ws.cell(
+                        row=fila_actual,
+                        column=numero_columna,
+                    ).border = BORDE_FINO
+
+                columna += 2
+
+            fila_actual += 1
 
     return crear_respuesta_excel(
         workbook=wb,
