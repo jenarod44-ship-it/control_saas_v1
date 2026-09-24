@@ -624,6 +624,15 @@ def crear_reporte_asistencia_semanal(request):
 
             fila_actual += 1
 
+            configurar_impresion(
+                ws=ws,
+                fila_encabezado=6,
+                ultima_columna="P",
+                ultima_fila=max(fila_actual - 1, 7),
+            )
+
+            ws.print_title_rows = "6:7"
+
     return crear_respuesta_excel(
         workbook=wb,
         nombre_archivo="reporte_semanal_asistencia.xlsx",
